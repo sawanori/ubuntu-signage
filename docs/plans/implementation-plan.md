@@ -304,10 +304,10 @@ ubuntuapp/
 │       ├── clip-broken.mp4        # 破損 MP4（0 バイト or 非 H.264）
 │       └── clip-large.mp4         # 巨大 MP4（200MB 相当、コピー途中テスト用）
 ├── scripts/
-│   ├── generate-dummy-assets.sh   # ffmpeg ダミー生成スクリプト
-│   └── install-systemd.sh         # systemd ユニット配置スクリプト
-├── systemd/
-│   └── ubuntuapp.service          # systemd --user ユニットテンプレート
+│   └── generate-dummy-assets.sh   # ffmpeg ダミー生成スクリプト
+├── ops/
+│   ├── signage-overlay.service    # systemd --user ユニットテンプレート
+│   └── install.sh                 # systemd ユニット配置スクリプト
 ├── docs/
 │   ├── plans/
 │   │   └── implementation-plan.md # 本書
@@ -665,7 +665,7 @@ ubuntuapp/
 
 | 項目 | 内容 |
 |------|------|
-| 成果物 | `systemd/ubuntuapp.service`（`Restart=always`・`RestartSec=5`・`StartLimitIntervalSec=60`・`StartLimitBurst=5`・`graphical-session.target`・`loginctl enable-linger`）。**`Environment=` または `EnvironmentFile=` で `DISPLAY`・`WAYLAND_DISPLAY`・`XDG_RUNTIME_DIR` を明示設定**（graphical-session.target のみでは環境変数が引き継がれないケースに対応）。**`app.requestSingleInstanceLock()` によるシングルインスタンスガード**（2 番目の起動は既存インスタンスにフォーカスして終了）。`~/.config/autostart/ubuntuapp.desktop` フォールバック。`scripts/install-systemd.sh` |
+| 成果物 | `ops/signage-overlay.service`（`Restart=always`・`RestartSec=5`・`StartLimitIntervalSec=60`・`StartLimitBurst=5`・`graphical-session.target`・`loginctl enable-linger`）。**`Environment=` または `EnvironmentFile=` で `DISPLAY`・`WAYLAND_DISPLAY`・`XDG_RUNTIME_DIR` を明示設定**（graphical-session.target のみでは環境変数が引き継がれないケースに対応）。**`app.requestSingleInstanceLock()` によるシングルインスタンスガード**（2 番目の起動は既存インスタンスにフォーカスして終了）。`~/.config/autostart/signage-overlay.desktop` フォールバック。`ops/install.sh` |
 | 依存 | T06 |
 | Done の定義 | [M] Pi4 でリブート後に自動起動し、`kill -9` 後に 5 秒以内に復帰する。連続クラッシュで start-limit 到達時は `journald` で確認できる（[M] UT-20）。**2 番目のプロセス起動で既存インスタンスへフォーカスが移り、2 番目が終了することを確認（[M] M-11）** |
 | 対応テスト | [M] 実機、[M] UT-20、[M] M-11 |
