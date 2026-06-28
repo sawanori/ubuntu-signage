@@ -51,7 +51,7 @@ const optionalSiteUrlSchema = z.union([z.literal(''), httpHttpsUrlSchema])
  *
  * 用途:
  *   - configManager.load() で取得値を検証し、型不正を検出する
- *   - z.infer<typeof ConfigSchema> は Config 型と完全に一致する
+ *   - z.infer<typeof ConfigSchema> と Config の等価性は型テスト（schema.test.ts の C5）で担保
  *
  * 検証ルール:
  *   - siteUrl      : 空文字（未設定）または http/https スキームの URL を許可
