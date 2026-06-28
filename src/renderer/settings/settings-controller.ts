@@ -234,8 +234,10 @@ export class SettingsController {
 
   /**
    * スケジューラの状態を更新する。
-   * Mainプロセスからの通知（IPC）を受けてこの値を更新することで、
-   * testPlay() の可否が動的に制御される。
+   * 注意: renderer 側では Main からこの状態を受信する IPC チャンネルは未配線のため、
+   * _schedulerState は常に初期値 'IDLE' のまま変わらない。
+   * testPlay() の disable ガードは cosmetic / 非機能であり、実ガードは Main 側にある。
+   * メソッドとガード自体は削除せず維持する（settings-controller.test.ts が assert）。
    *
    * @param state - 新しいスケジューラ状態
    */

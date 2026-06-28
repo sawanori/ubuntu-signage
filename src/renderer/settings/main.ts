@@ -157,9 +157,10 @@ function renderConfig(config: Config): void {
     : '（未設定）'
 
   // 「今すぐテスト再生」ボタン: IDLE 時のみ有効
-  // ※ schedulerState は preload 経由では受信できないため
-  //   SettingsController のデフォルト状態（IDLE）を参照する。
-  //   実際の IDLE ガードは Main 側 ipcController（T23）が担保する。
+  // ※ schedulerState は renderer では更新されず（IPC チャンネル未配線）、
+  //   SettingsController._schedulerState は常に初期値 'IDLE' のまま。
+  //   この disabled 設定は cosmetic / 非機能であり実ガードではない。
+  //   実際の IDLE ガードは Main 側 ipcController が担保する。
   testPlayBtn.disabled = controller.schedulerState !== 'IDLE'
 }
 
