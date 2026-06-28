@@ -91,6 +91,16 @@ function isValidInterval(n: number): n is 1 | 5 | 10 | 15 | 30 {
   return n === 1 || n === 5 || n === 10 || n === 15 || n === 30
 }
 
+/**
+ * ボタンの data-minutes 属性を数値として読み取る共通ヘルパー。
+ * Number() に統一（renderConfig の Number(attr) と click handler の parseInt(attr,10) を一本化）。
+ * 実属性値 '1'/'5'/'10'/'15'/'30' では両者の結果は完全一致。
+ */
+function readDataMinutes(btn: HTMLButtonElement): number {
+  const attr = btn.getAttribute('data-minutes')
+  return attr !== null ? Number(attr) : -1
+}
+
 // ─── UI 更新関数 ──────────────────────────────────────────────────────────────
 
 /**
@@ -105,9 +115,7 @@ function renderConfig(config: Config): void {
 
   // 再生間隔ボタン — 選択中のボタンに interval-btn--selected を付与
   for (const btn of intervalBtns) {
-    const minutesAttr = btn.getAttribute('data-minutes')
-    const minutes = minutesAttr !== null ? Number(minutesAttr) : -1
-    btn.classList.toggle('interval-btn--selected', minutes === config.intervalMinutes)
+    btn.classList.toggle('interval-btn--selected', readDataMinutes(btn) === config.intervalMinutes)
   }
 
   // サイト URL（フォーカス中は上書きしない）
@@ -173,9 +181,7 @@ loopToggle.addEventListener('click', () => {
 for (const btn of intervalBtns) {
   btn.addEventListener('click', () => {
     void (async () => {
-      const minutesAttr = btn.getAttribute('data-minutes')
-      if (!minutesAttr) return
-      const minutesNum = parseInt(minutesAttr, 10)
+      const minutesNum = readDataMinutes(btn)
       if (!isValidInterval(minutesNum)) return
       const updated = await controller.selectInterval(minutesNum)
       if (updated !== null) renderConfig(updated)
