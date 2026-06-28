@@ -5,14 +5,43 @@ Raspberry Pi 4 向けの Electron 製デジタルサイネージアプリ。
 
 ---
 
+## クイックスタート（Ubuntu Desktop・手動運用）
+
+> **動作確認済み**: Ubuntu 22.04 / 24.04 で `apt install` およびファイルマネージャからのダブルクリックインストールが成功し、依存（libgbm1 / libasound2 / libcups2 等）が自動解決・`ldd` で共有ライブラリ欠落ゼロを確認。**libfuse2 は deb 経路では不要。**
+
+### 初回セットアップ（1 回だけ）
+
+1. deb をファイルマネージャで **ダブルクリック**（または端末で `sudo apt install ./ubuntuapp_0.1.0_arm64.deb`。x86 機は `_amd64.deb`）→ インストール完了。依存は自動解決され、アプリメニューに「ubuntuapp」アイコンが登録される。**libfuse2 は不要。**
+
+2. 初回起動して設定（どちらかの方法で）:
+   - アプリ起動後、**画面の隅を 1.5 秒以内に 3 回タップ**で設定パネルを開き → `siteUrl` / 動画フォルダ / 間隔 を設定する
+   - または `~/.config/ubuntuapp/config.json` を直接編集（`siteUrl` / `videoFolderPath`（**絶対パス・直下の mp4 のみ**）/ `intervalMinutes` / `loopEnabled`）
+
+3. 表示したい動画（mp4）を `videoFolderPath` に指定したフォルダに置く。
+
+### 毎日の運用（担当者）
+
+- **朝**: 機器を起動・ログイン → アプリメニューの **「ubuntuapp」アイコンをダブルクリック** → 全画面でサイネージ表示（背景に指定サイト＋一定間隔で動画オーバーレイ）
+- **終了**: **Ctrl+Q**（修正済み: Wayland でも有効）／効かない環境では**画面の隅を 1.5 秒以内に 3 回タップ → 設定パネル → 「終了」ボタン**／または電源 OFF
+- 画面スリープはアプリ稼働中に内部の `powerSaveBlocker` が自動的に抑止するため、追加設定は不要
+
+### コンテンツ更新
+
+- **動画**: フォルダに mp4 を追加 / 削除（次回の再生から自動反映）
+- **表示サイト**: 設定パネル（隅 3 タップ）で変更
+
+> **補足**: 無人 24h 自動起動（電源 ON でサイネージが自動的に起動する運用）が将来必要になった場合のみ、`ops/install.sh` による systemd 自動起動の配線が使える（手動運用には不要）。詳細は `docs/DEPLOY-AND-VERIFY.md` §5 参照。
+
+---
+
 ## 必要環境
 
 | 項目 | 要件 |
 |------|------|
 | ハードウェア | Raspberry Pi 4 Model B (4GB 以上推奨) |
-| OS | Raspberry Pi OS 64bit (Bookworm 相当) |
-| アーキテクチャ | arm64 (aarch64) |
-| libfuse2 | **必須** (Pi OS Bookworm は既定で fuse3 のみ。`sudo apt-get install -y libfuse2` で導入) |
+| OS | **Ubuntu Desktop 24.04**（Pi4: arm64 / x86 機: amd64） |
+| アーキテクチャ | Pi4: arm64 (aarch64) / x86 機: amd64 |
+| libfuse2 | deb 経路では**不要**。AppImage 経路（無人 kiosk 運用）では `sudo apt-get install -y libfuse2` |
 | Node.js | v20 LTS 以上 (ビルド機のみ。Pi4 での Node.js インストール不要) |
 
 ---
@@ -40,17 +69,19 @@ release/
 
 ---
 
-## デプロイ
+## デプロイ（AppImage 経路・無人 kiosk 運用向け）
+
+> **手動運用の場合は「クイックスタート」セクションを参照してください。** 以下は AppImage + systemd による 24h 無人 kiosk 運用向けの手順です。
 
 ```bash
-# 1. AppImage を Pi4 へ転送
-scp release/ubuntuapp-0.1.0-arm64.AppImage pi@raspberrypi.local:~/
+# 1. AppImage を対象機へ転送（<user>/<host> は実際のユーザー名・ホスト名に置換）
+scp release/ubuntuapp-0.1.0-arm64.AppImage <user>@<host>:~/
 
-# 2. Pi4 で libfuse2 をインストール (Bookworm 初回のみ)
-ssh pi@raspberrypi.local "sudo apt-get install -y libfuse2"
+# 2. 対象機で libfuse2 をインストール (Ubuntu・AppImage 経路・初回のみ)
+ssh <user>@<host> "sudo apt-get install -y libfuse2"
 
 # 3. install.sh でシステムに登録（プリフライト検査・systemd unit 有効化・XDG autostart 設置）
-ssh pi@raspberrypi.local
+ssh <user>@<host>
 bash ops/install.sh ~/ubuntuapp-0.1.0-arm64.AppImage
 
 # 4. 手動起動確認
@@ -69,11 +100,13 @@ journalctl --user -u signage-overlay -f
 ```json
 {
   "siteUrl": "https://your-signage-site.example.com",
-  "videoFolderPath": "/home/pi/videos",
+  "videoFolderPath": "/home/<ユーザー名>/videos",
   "intervalMinutes": 5,
   "loopEnabled": true
 }
 ```
+
+> `videoFolderPath` には実在する絶対パスを指定してください（例: `/home/ubuntu/videos`）。設定パネルの「動画フォルダ選択」ボタンで GUI から指定するのが推奨です。
 
 | キー | 説明 | 制約 |
 |------|------|------|
