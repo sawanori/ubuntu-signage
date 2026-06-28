@@ -22,7 +22,7 @@ Raspberry Pi 4 向けの Electron 製デジタルサイネージアプリ。
 ### 毎日の運用（担当者）
 
 - **朝**: 機器を起動・ログイン → アプリメニューの **「ubuntuapp」アイコンをダブルクリック** → 全画面でサイネージ表示（背景に指定サイト＋一定間隔で動画オーバーレイ）
-- **終了**: **Ctrl+Q**（または電源 OFF）
+- **終了**: **Ctrl+Q**（修正済み: Wayland でも有効）／効かない環境では**画面の隅を 1.5 秒以内に 3 回タップ → 設定パネル → 「終了」ボタン**／または電源 OFF
 - 画面スリープはアプリ稼働中に内部の `powerSaveBlocker` が自動的に抑止するため、追加設定は不要
 
 ### コンテンツ更新
@@ -74,14 +74,14 @@ release/
 > **手動運用の場合は「クイックスタート」セクションを参照してください。** 以下は AppImage + systemd による 24h 無人 kiosk 運用向けの手順です。
 
 ```bash
-# 1. AppImage を Pi4 へ転送
-scp release/ubuntuapp-0.1.0-arm64.AppImage pi@raspberrypi.local:~/
+# 1. AppImage を対象機へ転送（<user>/<host> は実際のユーザー名・ホスト名に置換）
+scp release/ubuntuapp-0.1.0-arm64.AppImage <user>@<host>:~/
 
-# 2. Pi4 で libfuse2 をインストール (Ubuntu・AppImage 経路・初回のみ)
-ssh pi@raspberrypi.local "sudo apt-get install -y libfuse2"
+# 2. 対象機で libfuse2 をインストール (Ubuntu・AppImage 経路・初回のみ)
+ssh <user>@<host> "sudo apt-get install -y libfuse2"
 
 # 3. install.sh でシステムに登録（プリフライト検査・systemd unit 有効化・XDG autostart 設置）
-ssh pi@raspberrypi.local
+ssh <user>@<host>
 bash ops/install.sh ~/ubuntuapp-0.1.0-arm64.AppImage
 
 # 4. 手動起動確認
@@ -100,11 +100,13 @@ journalctl --user -u signage-overlay -f
 ```json
 {
   "siteUrl": "https://your-signage-site.example.com",
-  "videoFolderPath": "/home/pi/videos",
+  "videoFolderPath": "/home/<ユーザー名>/videos",
   "intervalMinutes": 5,
   "loopEnabled": true
 }
 ```
+
+> `videoFolderPath` には実在する絶対パスを指定してください（例: `/home/ubuntu/videos`）。設定パネルの「動画フォルダ選択」ボタンで GUI から指定するのが推奨です。
 
 | キー | 説明 | 制約 |
 |------|------|------|
