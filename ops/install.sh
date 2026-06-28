@@ -39,15 +39,30 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────
 # プリフライト検査: libfuse2
 # type-2 AppImage は libfuse.so.2 が必要。Pi OS Bookworm は既定で fuse3 のみ。
-# 代替: sudo apt-get install -y libfuse2
-#        または --appimage-extract-and-run 環境変数で FUSE なし実行（遅い）
+#
+# EXTRACT_AND_RUN=1 が設定されている場合:
+#   libfuse2 チェックをスキップし、ExecStart に --appimage-extract-and-run を付与して
+#   FUSE なしで AppImage を展開・実行するモードで unit をインストールする。
+#   ※起動毎に AppImage を /tmp へ展開するため初回起動がやや遅く、追加ディスク領域を消費する。
 # ─────────────────────────────────────────────────────────────────────────────
-if ! ldconfig -p | grep -q 'libfuse\.so\.2'; then
-  echo "エラー: libfuse2 が未導入です。" >&2
-  echo "  sudo apt-get install -y libfuse2 を実行してから再試行してください。" >&2
-  echo "  (Pi OS Bookworm は既定で fuse3 のみ。type-2 AppImage は libfuse2 が必要です)" >&2
-  echo "  代替: APPIMAGE_EXTRACT_AND_RUN=1 bash ops/install.sh ${APPIMAGE_PATH}" >&2
-  exit 1
+if [[ -z "${EXTRACT_AND_RUN:-}" ]]; then
+  if ! ldconfig -p | grep -q 'libfuse\.so\.2'; then
+    echo "エラー: libfuse2 が未導入です。" >&2
+    echo "(Pi OS Bookworm は既定で fuse3 のみ。type-2 AppImage は libfuse2 が必要です)" >&2
+    echo "" >&2
+    echo "  【推奨】 libfuse2 をインストールしてから再実行:" >&2
+    echo "    sudo apt-get install -y libfuse2" >&2
+    echo "    bash ops/install.sh ${APPIMAGE_PATH}" >&2
+    echo "" >&2
+    echo "  【FUSE 不要モード（起動毎に /tmp へ展開・やや遅い）】:" >&2
+    echo "    EXTRACT_AND_RUN=1 bash ops/install.sh ${APPIMAGE_PATH}" >&2
+    echo "    ※ install.sh が ExecStart に --appimage-extract-and-run を自動付与します。" >&2
+    echo "" >&2
+    echo "  【deb パッケージ（手動起動・開発用途向け）】:" >&2
+    echo "    sudo apt install ./ubuntuapp_*.deb" >&2
+    echo "    ※ deb は 24h 無人運用の systemd 自動起動の配線を含みません。" >&2
+    exit 1
+  fi
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -82,7 +97,12 @@ mkdir -p "${SYSTEMD_USER_DIR}"
 cp "${UNIT_SRC}" "${UNIT_DEST}"
 
 # ExecStart・環境変数をこの環境の値に書き換え
-sed -i "s|ExecStart=.*|ExecStart=${APPIMAGE_PATH}|" "${UNIT_DEST}"
+# EXTRACT_AND_RUN=1 の場合は --appimage-extract-and-run を付与（libfuse2 不要・起動毎展開モード）
+if [[ -n "${EXTRACT_AND_RUN:-}" ]]; then
+  sed -i "s|ExecStart=.*|ExecStart=${APPIMAGE_PATH} --appimage-extract-and-run|" "${UNIT_DEST}"
+else
+  sed -i "s|ExecStart=.*|ExecStart=${APPIMAGE_PATH}|" "${UNIT_DEST}"
+fi
 sed -i "s|Environment=DISPLAY=.*|Environment=DISPLAY=${DISPLAY}|" "${UNIT_DEST}"
 sed -i "s|Environment=XDG_RUNTIME_DIR=.*|Environment=XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR}|" "${UNIT_DEST}"
 sed -i "s|Environment=XDG_SESSION_TYPE=.*|Environment=XDG_SESSION_TYPE=${XDG_SESSION_TYPE}|" "${UNIT_DEST}"

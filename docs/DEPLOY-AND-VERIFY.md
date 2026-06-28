@@ -61,13 +61,15 @@ sudo apt-get install -y libfuse2
 
 **libfuse2 なしで起動する代替手順 (FUSE 不使用モード)**
 
-`libfuse2` がインストールできない環境では、環境変数 `APPIMAGE_EXTRACT_AND_RUN=1` を設定すると FUSE を使わずに AppImage を展開・実行できます (起動に数秒余分にかかります):
+`libfuse2` がインストールできない環境では、`EXTRACT_AND_RUN=1` を設定して `ops/install.sh` を呼ぶと
+FUSE を使わずに AppImage を展開・実行するモードで systemd unit をインストールできます
+(起動毎に AppImage を /tmp へ展開するため、初回起動がやや遅く追加ディスク領域を消費します):
 
 ```bash
-# install.sh の代替呼び出し
-APPIMAGE_EXTRACT_AND_RUN=1 bash ops/install.sh /home/pi/ubuntuapp-0.1.0-arm64.AppImage
-# 起動後の systemd ユニット経由での起動も同様に環境変数が必要なため、
-# ~/.config/systemd/user/signage-overlay.service に Environment=APPIMAGE_EXTRACT_AND_RUN=1 を追記すること
+# FUSE 不使用モードでのインストール
+EXTRACT_AND_RUN=1 bash ops/install.sh /home/pi/ubuntuapp-0.1.0-arm64.AppImage
+# install.sh が ExecStart に --appimage-extract-and-run を自動付与するため、
+# systemd unit を手動で編集する必要はありません。
 ```
 
 > 推奨は `sudo apt-get install -y libfuse2` です。
