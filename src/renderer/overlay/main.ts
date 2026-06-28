@@ -59,7 +59,12 @@ class DomVideoElement implements IVideoElement {
   play(): void {
     // フェードイン完了後に OverlayController が呼ぶ（明示的再生開始）。
     // autoplay で既に再生中の場合は no-op に近い動作となる。
-    void this.el.play()
+    // play() の reject（NotAllowedError/AbortError 等）は <video> の 'error' イベントを
+    // 発火しないため、そのままでは無音障害になる。失敗時のみ診断ログを出す。
+    // 成功パスの観測出力は不変。onError へのルーティングは挙動変更のため行わない。
+    this.el.play().catch((e) => {
+      console.error('[overlay] video.play() rejected', e)
+    })
   }
 
   pause(): void {
