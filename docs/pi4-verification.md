@@ -77,8 +77,9 @@ VA-API 結果:
 # CPU 使用率
 top -b -n 3 | grep -E "ubuntuapp|AppImage"
 
-# 温度
-vcgencmd measure_temp
+# 温度（Ubuntu 標準コマンド）
+awk '{printf "%.1f°C\n",$1/1000}' /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo "N/A"
+# ※ Pi4 固有の GPU 温度が必要な場合: sudo apt install libraspberrypi-bin してから vcgencmd measure_temp
 
 # メモリ使用量
 ps aux | grep -E "AppImage|ubuntuapp" | awk '{sum += $6} END {print sum/1024 "MB"}'
