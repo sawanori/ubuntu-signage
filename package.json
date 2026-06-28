@@ -10,6 +10,7 @@
     "url": "https://github.com/sawanori/ubuntu-signage"
   },
   "homepage": "https://github.com/sawanori/ubuntu-signage",
+  "desktopName": "ubuntuapp",
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",

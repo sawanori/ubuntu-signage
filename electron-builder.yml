@@ -21,8 +21,9 @@ linux:
         - x64
         - arm64
   icon: build/icon.png
-  category: Utility
+  category: AudioVideo
   maintainer: "sawanori <snp.inc.info@gmail.com>"
+  syncDesktopName: true
 
 deb:
   depends:
