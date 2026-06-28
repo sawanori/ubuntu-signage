@@ -14,14 +14,6 @@ export type Config = {
   fadeDurationMs: number
 }
 
-/** プレイリスト状態 */
-export type PlaylistState = {
-  /** ソート済みファイル名リスト（絶対パス） */
-  files: readonly string[]
-  /** 最後に再生したファイル名（basename）。null = 未再生 */
-  lastPlayedFileName: string | null
-}
-
 /** スケジューラ状態 */
 export type SchedulerState = 'IDLE' | 'FADE_IN' | 'PLAYING' | 'FADE_OUT'
 
