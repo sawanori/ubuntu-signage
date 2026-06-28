@@ -273,8 +273,9 @@ async function main(): Promise<void> {
   const handleMedia = (request: Request): Promise<Response> =>
     createElectronProtocolHandler(currentVideoFolder, mediaFsAdapter, protocolLogger)(request)
 
-  // 全 view が明示 partition を持つため既定セッション経由の media:// 消費者は現状ゼロ。
-  // 防御的に登録を残す（削除しない）。
+  // 全 view が明示 partition（persist:site / '' / persist:overlay / persist:hotspot /
+  // persist:settings）を持つため、既定セッション経由の media:// 消費者は現状ゼロ。
+  // セキュリティ隣接コードであり独断削除はリスクを伴うため、防御的に登録を残す（削除しない）。
   protocol.handle('media', handleMedia)
 
   // overlayView は partition "persist:overlay" で動作するため、media:// ハンドラは既定セッションだけでなく
