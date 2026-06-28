@@ -172,37 +172,30 @@ function setVisible(visible: boolean): void {
 }
 
 /**
- * CSS opacity 0→1 フェードイン（2000ms、styles.css の transition: opacity 2000ms 参照）。
- * transitionend 受信後に onComplete を呼ぶ。
+ * CSS opacity トランジション共通ヘルパー（styles.css の transition: opacity 2000ms 参照）。
+ * `to` に指定した値（'0' または '1'）へ opacity を変化させ、
+ * transitionend（opacity プロパティ）受信後に onComplete を呼ぶ。
  *
  * 視覚確認は E2E / [M] に委ねる（UO-06）。
  */
-function triggerFadeIn(onComplete: () => void): void {
+function runOpacityTransition(to: '0' | '1', onComplete: () => void): void {
   const handleEnd = (ev: TransitionEvent): void => {
     if (ev.propertyName !== 'opacity') return
     container.removeEventListener('transitionend', handleEnd)
     onComplete()
   }
   container.addEventListener('transitionend', handleEnd)
-  // opacity を 1 にセット → CSS transition: opacity 2000ms ease-in-out が発火（styles.css 参照）
-  container.style.opacity = '1'
+  container.style.opacity = to
 }
 
-/**
- * CSS opacity 1→0 フェードアウト（2000ms、styles.css の transition: opacity 2000ms 参照）。
- * transitionend 受信後に onComplete を呼ぶ。
- *
- * 視覚確認は E2E / [M] に委ねる（UO-06）。
- */
+/** CSS opacity 0→1 フェードイン（2000ms）。transitionend 後に onComplete を呼ぶ。*/
+function triggerFadeIn(onComplete: () => void): void {
+  runOpacityTransition('1', onComplete)
+}
+
+/** CSS opacity 1→0 フェードアウト（2000ms）。transitionend 後に onComplete を呼ぶ。*/
 function triggerFadeOut(onComplete: () => void): void {
-  const handleEnd = (ev: TransitionEvent): void => {
-    if (ev.propertyName !== 'opacity') return
-    container.removeEventListener('transitionend', handleEnd)
-    onComplete()
-  }
-  container.addEventListener('transitionend', handleEnd)
-  // opacity を 0 にセット → CSS transition: opacity 2000ms ease-in-out が発火（styles.css 参照）
-  container.style.opacity = '0'
+  runOpacityTransition('0', onComplete)
 }
 
 // ─── OverlayController 生成と IPC 結線 ───────────────────────────────────────
