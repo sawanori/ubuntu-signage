@@ -127,6 +127,25 @@ let _gpuProcVersion: string | null = null
   }
 }
 
+// ─── Wayland 透過合成フォールバック — Wayland 実機のみ、WSL では無効 (#8) ──────
+// Wayland セッションかつ実ハードウェアの場合のみ ozone-platform-hint=x11 を追加する。
+// X11 セッションはデフォルトで問題なく、WSL では適用しない。
+// app.whenReady() より前に呼ぶ必要がある。
+{
+  const _gpuParamsForWayland = {
+    env: process.env as Record<string, string | undefined>,
+    procVersion: _gpuProcVersion,
+  }
+  const _isWaylandSession = process.env['XDG_SESSION_TYPE'] === 'wayland'
+  if (_isWaylandSession && !shouldDisableGpu(_gpuParamsForWayland)) {
+    app.commandLine.appendSwitch('ozone-platform-hint', 'x11')
+    logWarn('display.ozonePlatformHintApplied', {
+      event: 'display.ozonePlatformHintApplied',
+      ozonePlatformHint: 'x11',
+    })
+  }
+}
+
 // ─── 構造化ロガー ──────────────────────────────────────────────────────────────
 
 function logError(event: string, meta?: Record<string, unknown>): void {
