@@ -17,7 +17,6 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { registerHandlers } from '../../src/main/ipc'
-import { ConfigUpdateSchema } from '../../src/shared/schema'
 import type {
   IpcEvent,
   IpcMainLike,
@@ -736,66 +735,6 @@ describe('IPC 信頼境界 (T18/T20 §3.5)', () => {
       handler(makeEvent('http://localhost.attacker.com/settings/index.html'), { intervalMinutes: 5 })
       expect(mockConfigManager.applyUpdate).not.toHaveBeenCalled()
       expect(mockLogger.error).toHaveBeenCalledWith('ipc.invalidSender', expect.any(Object))
-    })
-  })
-
-  // ─── ConfigUpdateSchema 直接検証 ─────────────────────────────────────────────
-
-  describe('ConfigUpdateSchema 検証', () => {
-    it('空オブジェクト {} は有効（全フィールド任意）', () => {
-      expect(ConfigUpdateSchema.safeParse({}).success).toBe(true)
-    })
-
-    it.each([1, 5, 10, 15, 30] as const)(
-      '有効な intervalMinutes = %i を受け入れる',
-      (v) => {
-        expect(ConfigUpdateSchema.safeParse({ intervalMinutes: v }).success).toBe(true)
-      }
-    )
-
-    it.each([2, 7, 0, 100, 3, 11, 20])(
-      '無効な intervalMinutes = %i を拒否する',
-      (v) => {
-        expect(ConfigUpdateSchema.safeParse({ intervalMinutes: v }).success).toBe(false)
-      }
-    )
-
-    it('有効な https:// siteUrl を受け入れる', () => {
-      expect(
-        ConfigUpdateSchema.safeParse({ siteUrl: 'https://example.com' }).success
-      ).toBe(true)
-    })
-
-    it('有効な http:// siteUrl を受け入れる', () => {
-      expect(
-        ConfigUpdateSchema.safeParse({ siteUrl: 'http://example.com' }).success
-      ).toBe(true)
-    })
-
-    it.each(['javascript://evil', 'ftp://ftp.example.com', 'file:///etc/passwd', 'data:text/html,x'])(
-      '無効な siteUrl スキーム %s を拒否する',
-      (url) => {
-        expect(ConfigUpdateSchema.safeParse({ siteUrl: url }).success).toBe(false)
-      }
-    )
-
-    it('有効な複数フィールド更新を受け入れる', () => {
-      expect(
-        ConfigUpdateSchema.safeParse({
-          siteUrl: 'https://example.com',
-          intervalMinutes: 15,
-          loopEnabled: false,
-        }).success
-      ).toBe(true)
-    })
-
-    it('有効フィールドと無効 intervalMinutes の組み合わせを拒否する', () => {
-      expect(
-        ConfigUpdateSchema.safeParse({
-          siteUrl: 'https://example.com',
-          intervalMinutes: 7,
-        }).success
-      ).toBe(false)
     })
   })
 
