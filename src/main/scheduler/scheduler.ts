@@ -101,11 +101,7 @@ export class Scheduler {
       this._pendingDurationMs = null
       this._applyDurationWatchdog(ms)
     } else {
-      this.watchdogTimer = setTimeout(() => {
-        this.watchdogTimer = null
-        this.logger.error('scheduler.watchdogTriggered', { state: 'PLAYING' })
-        this._forceIdle()
-      }, WATCHDOG_PLAYING_DEFAULT_MS)
+      this._armWatchdog('PLAYING', WATCHDOG_PLAYING_DEFAULT_MS)
     }
   }
 
@@ -223,14 +219,22 @@ export class Scheduler {
     }
   }
 
+  /**
+   * ウォッチドッグタイマーを装填する共通ヘルパー。
+   * タイムアウト後に `scheduler.watchdogTriggered` をログ出力し `_forceIdle()` を呼ぶ。
+   */
+  private _armWatchdog(stateLabel: string, ms: number): void {
+    this.watchdogTimer = setTimeout(() => {
+      this.watchdogTimer = null
+      this.logger.error('scheduler.watchdogTriggered', { state: stateLabel })
+      this._forceIdle()
+    }, ms)
+  }
+
   /** PLAYING ウォッチドッグを ms+30000ms で装填する */
   private _applyDurationWatchdog(ms: number): void {
     this._clearWatchdog()
-    this.watchdogTimer = setTimeout(() => {
-      this.watchdogTimer = null
-      this.logger.error('scheduler.watchdogTriggered', { state: 'PLAYING' })
-      this._forceIdle()
-    }, ms + 30_000)
+    this._armWatchdog('PLAYING', ms + 30_000)
   }
 
   /**
@@ -273,22 +277,14 @@ export class Scheduler {
     this.state = 'FADE_IN'
     this.onPlay(path)
     this._clearWatchdog()
-    this.watchdogTimer = setTimeout(() => {
-      this.watchdogTimer = null
-      this.logger.error('scheduler.watchdogTriggered', { state: 'FADE_IN' })
-      this._forceIdle()
-    }, WATCHDOG_FADE_IN_MS)
+    this._armWatchdog('FADE_IN', WATCHDOG_FADE_IN_MS)
   }
 
   /** FADE_OUT 状態へ遷移し、ウォッチドッグを装填する */
   private _enterFadeOut(): void {
     this.state = 'FADE_OUT'
     this._clearWatchdog()
-    this.watchdogTimer = setTimeout(() => {
-      this.watchdogTimer = null
-      this.logger.error('scheduler.watchdogTriggered', { state: 'FADE_OUT' })
-      this._forceIdle()
-    }, WATCHDOG_FADE_MS)
+    this._armWatchdog('FADE_OUT', WATCHDOG_FADE_MS)
   }
 
   /**
