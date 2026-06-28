@@ -83,17 +83,16 @@ if (!gotLock) {
     procVersion = fs.readFileSync('/proc/version', 'utf8')
   } catch {
     // /proc/version が存在しない環境（macOS / Windows ネイティブ等）では無視
-    // logWarn はまだ定義されていないため後で定義する関数の参照を避ける
-    process.stdout.write(
-      JSON.stringify({ level: 'WARN', event: 'gpu.procVersionReadFailed', ts: Date.now() }) + '\n',
-    )
+    // logWarn は巻き上げ関数宣言のため、この位置から呼び出し可能
+    logWarn('gpu.procVersionReadFailed')
   }
   const gpuParams = { env: process.env as Record<string, string | undefined>, procVersion }
   if (shouldDisableGpu(gpuParams)) {
     const phase = gpuFallbackPhase(gpuParams.env)
     // phase 3 (swiftshader GL) / phase 4 (実 GPU を in-process で使う) は hw accel を切らない
     // （phase 1/2 のみ無効化）
-    if (phase !== 3 && phase !== 4) {
+    const hardwareAccelerationDisabled = phase !== 3 && phase !== 4
+    if (hardwareAccelerationDisabled) {
       app.disableHardwareAcceleration()
     }
     // GPU_FALLBACK_PHASE 環境変数で切替（デフォルト 2）。app.whenReady() より前に呼ぶ必要あり
@@ -101,16 +100,7 @@ if (!gotLock) {
     for (const sw of gpuSwitches) {
       app.commandLine.appendSwitch(sw.name, sw.value)
     }
-    process.stdout.write(
-      JSON.stringify({
-        level: 'WARN',
-        event: 'gpu.hardwareAccelerationDisabled',
-        phase,
-        hardwareAccelerationDisabled: phase !== 3 && phase !== 4,
-        gpuSwitches,
-        ts: Date.now(),
-      }) + '\n',
-    )
+    logWarn('gpu.hardwareAccelerationDisabled', { phase, hardwareAccelerationDisabled, gpuSwitches })
   }
 }
 
