@@ -644,25 +644,41 @@ async function main(): Promise<void> {
   )
 
   // ── renderer プロセスクラッシュ復旧 (§8 / M-04 + Phase E E-9) ────────────
-  overlayView.webContents.on('render-process-gone', (_event, details) => {
-    logError('renderer.crashed', { view: 'overlay', reason: details.reason })
-    void loadOverlay()
-  })
-  settingsView.webContents.on('render-process-gone', (_event, details) => {
-    logError('renderer.crashed', { view: 'settings', reason: details.reason })
-    void loadSettings()
-  })
-  hotspotView.webContents.on('render-process-gone', (_event, details) => {
-    logError('renderer.crashed', { view: 'hotspot', reason: details.reason })
-    // E-9 §8: hotspot 再ロード後に zone 状態を復元する（クラッシュで zone-disable が失われた場合）
-    loadHotspot().then(() => {
-      // toolbarVisible の現状態を hotspot に再適用してゾーン状態を復元する
-      notifyAddressZoneEnabled(hotspotView.webContents, toolbarVisible)
-    }).catch((e: unknown) => {
-      logError('renderer.hotspotReloadFailed', {
-        reason: e instanceof Error ? e.message : String(e),
-      })
+
+  /**
+   * render-process-gone ハンドラを view に結線する共通ヘルパー。
+   * ログイベント renderer.crashed / ペイロード {view,reason} は全 view で同一。
+   * afterReload が指定された場合: reload().then(afterReload).catch(renderer.${name}ReloadFailed)
+   * afterReload が省略された場合: void reload()（overlay/settings 相当）
+   */
+  function attachCrashRecovery(
+    view: WebContentsView,
+    name: string,
+    reload: () => Promise<void>,
+    afterReload?: () => void,
+  ): void {
+    view.webContents.on('render-process-gone', (_event, details) => {
+      logError('renderer.crashed', { view: name, reason: details.reason })
+      if (afterReload !== undefined) {
+        reload().then(() => {
+          afterReload()
+        }).catch((e: unknown) => {
+          logError(`renderer.${name}ReloadFailed`, {
+            reason: e instanceof Error ? e.message : String(e),
+          })
+        })
+      } else {
+        void reload()
+      }
     })
+  }
+
+  attachCrashRecovery(overlayView, 'overlay', loadOverlay)
+  attachCrashRecovery(settingsView, 'settings', loadSettings)
+  // E-9 §8: hotspot 再ロード後に zone 状態を復元する（クラッシュで zone-disable が失われた場合）
+  attachCrashRecovery(hotspotView, 'hotspot', loadHotspot, () => {
+    // toolbarVisible の現状態を hotspot に再適用してゾーン状態を復元する
+    notifyAddressZoneEnabled(hotspotView.webContents, toolbarVisible)
   })
   // hotspot ロード完了時に zone-disable 状態を再適用する
   // （初回ロードのタイミング競合 / dev HMR でのリロードで zone-disable が失われるのを防ぐ）
@@ -670,17 +686,10 @@ async function main(): Promise<void> {
     notifyAddressZoneEnabled(hotspotView.webContents, toolbarVisible)
   })
   // E-9: addressBarView クラッシュ復旧
-  addressBarView.webContents.on('render-process-gone', (_event, details) => {
-    logError('renderer.crashed', { view: 'addressBar', reason: details.reason })
-    // 再ロード後に toolbarVisible を setToolbarVisible で再適用して
-    // bounds / visibility / zone-disable 状態を完全に復元する
-    loadAddressBar().then(() => {
-      setToolbarVisible(toolbarVisible)
-    }).catch((e: unknown) => {
-      logError('renderer.addressBarReloadFailed', {
-        reason: e instanceof Error ? e.message : String(e),
-      })
-    })
+  // 再ロード後に toolbarVisible を setToolbarVisible で再適用して
+  // bounds / visibility / zone-disable 状態を完全に復元する
+  attachCrashRecovery(addressBarView, 'addressBar', loadAddressBar, () => {
+    setToolbarVisible(toolbarVisible)
   })
 
   // ── 設定パネル 開閉 ────────────────────────────────────────────────────
