@@ -92,6 +92,20 @@ function makeMediaUrl(relPath: string): string {
 }
 
 /**
+ * ProtocolRequest を組み立てる。
+ * @param url    リクエスト URL
+ * @param range  Range ヘッダー値（省略時は Range なし）
+ */
+function makeReq(url: string, range?: string): ProtocolRequest {
+  return {
+    url,
+    headers: {
+      get: (name: string) => (name === 'range' ? (range ?? null) : null),
+    },
+  }
+}
+
+/**
  * ストリームを読み込んで Buffer に変換する。
  * テスト内で応答ボディを検証するための補助関数。
  */
@@ -133,19 +147,13 @@ describe('handleMediaRequest', () => {
   describe('UT-21: パストラバーサル攻撃を 403 で拒否する', () => {
     it('../ を含むパスはルート外に出るため 403 を返す', async () => {
       // media://videos/../../../etc/passwd のような URL
-      const req: ProtocolRequest = {
-        url: 'media://videos/../../../etc/passwd',
-        headers: { get: () => null },
-      }
+      const req = makeReq('media://videos/../../../etc/passwd')
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.status).toBe(403)
     })
 
     it('パストラバーサル時に ERROR ログ event "protocol.pathTraversal" を出力する', async () => {
-      const req: ProtocolRequest = {
-        url: 'media://videos/../../../etc/passwd',
-        headers: { get: () => null },
-      }
+      const req = makeReq('media://videos/../../../etc/passwd')
       await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(logger.error).toHaveBeenCalled()
       const calls = vi.mocked(logger.error).mock.calls
@@ -158,38 +166,26 @@ describe('handleMediaRequest', () => {
 
     it('URL エンコードされた ../ (パーセントエンコーディング) も 403 を返す', async () => {
       // %2e%2e%2f = ../
-      const req: ProtocolRequest = {
-        url: 'media://videos/%2e%2e%2fetc%2fpasswd',
-        headers: { get: () => null },
-      }
+      const req = makeReq('media://videos/%2e%2e%2fetc%2fpasswd')
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.status).toBe(403)
     })
 
     it('二重エンコードされた ../ (%252e%252e/) も 403 を返す', async () => {
-      const req: ProtocolRequest = {
-        url: 'media://videos/%252e%252e%2fclip.mp4',
-        headers: { get: () => null },
-      }
+      const req = makeReq('media://videos/%252e%252e%2fclip.mp4')
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.status).toBe(403)
     })
 
     it('ルート外への絶対パス参照も 403 を返す', async () => {
       // videoFolder が /tmp/xxx の場合、/etc/passwd は外部
-      const req: ProtocolRequest = {
-        url: 'media://videos//etc/passwd',
-        headers: { get: () => null },
-      }
+      const req = makeReq('media://videos//etc/passwd')
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.status).toBe(403)
     })
 
     it('ファイルが存在しない場合も 403 または 404 を返す（クラッシュしない）', async () => {
-      const req: ProtocolRequest = {
-        url: makeMediaUrl('nonexistent.mp4'),
-        headers: { get: () => null },
-      }
+      const req = makeReq(makeMediaUrl('nonexistent.mp4'))
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.status).toBeGreaterThanOrEqual(400)
       expect(res.status).toBeLessThan(500)
@@ -208,10 +204,7 @@ describe('handleMediaRequest', () => {
       fs.symlinkSync(secretFile, symlinkPath)
 
       try {
-        const req: ProtocolRequest = {
-          url: makeMediaUrl('evil.mp4'),
-          headers: { get: () => null },
-        }
+        const req = makeReq(makeMediaUrl('evil.mp4'))
         const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
         expect(res.status).toBe(403)
       } finally {
@@ -228,10 +221,7 @@ describe('handleMediaRequest', () => {
       fs.symlinkSync(secretFile, symlinkPath)
 
       try {
-        const req: ProtocolRequest = {
-          url: makeMediaUrl('evil.mp4'),
-          headers: { get: () => null },
-        }
+        const req = makeReq(makeMediaUrl('evil.mp4'))
         await handleMediaRequest(req, videoFolder, fsAdapter, logger)
         const calls = vi.mocked(logger.error).mock.calls
         const traversalCall = calls.find(([, meta]) => {
@@ -253,10 +243,7 @@ describe('handleMediaRequest', () => {
       const linkFile = path.join(videoFolder, 'link.mp4')
       fs.symlinkSync(realFile, linkFile)
 
-      const req: ProtocolRequest = {
-        url: makeMediaUrl('link.mp4'),
-        headers: { get: (_name: string) => (_name === 'range' ? 'bytes=0-9' : null) },
-      }
+      const req = makeReq(makeMediaUrl('link.mp4'), 'bytes=0-9')
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.status).toBe(206)
     })
@@ -280,37 +267,25 @@ describe('handleMediaRequest', () => {
     })
 
     it('Range: bytes=0-9 で 206 を返す', async () => {
-      const req: ProtocolRequest = {
-        url: makeMediaUrl('clip-001.mp4'),
-        headers: { get: (name: string) => (name === 'range' ? 'bytes=0-9' : null) },
-      }
+      const req = makeReq(makeMediaUrl('clip-001.mp4'), 'bytes=0-9')
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.status).toBe(206)
     })
 
     it('Range: bytes=0-9 で Content-Range ヘッダーが正しい', async () => {
-      const req: ProtocolRequest = {
-        url: makeMediaUrl('clip-001.mp4'),
-        headers: { get: (name: string) => (name === 'range' ? 'bytes=0-9' : null) },
-      }
+      const req = makeReq(makeMediaUrl('clip-001.mp4'), 'bytes=0-9')
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.headers['Content-Range']).toBe('bytes 0-9/100')
     })
 
     it('Range: bytes=0-9 で Content-Length が 10', async () => {
-      const req: ProtocolRequest = {
-        url: makeMediaUrl('clip-001.mp4'),
-        headers: { get: (name: string) => (name === 'range' ? 'bytes=0-9' : null) },
-      }
+      const req = makeReq(makeMediaUrl('clip-001.mp4'), 'bytes=0-9')
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.headers['Content-Length']).toBe('10')
     })
 
     it('Range: bytes=0-9 でボディが最初の 10 バイト', async () => {
-      const req: ProtocolRequest = {
-        url: makeMediaUrl('clip-001.mp4'),
-        headers: { get: (name: string) => (name === 'range' ? 'bytes=0-9' : null) },
-      }
+      const req = makeReq(makeMediaUrl('clip-001.mp4'), 'bytes=0-9')
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.body).not.toBeNull()
       const body = await readStream(res.body!)
@@ -318,10 +293,7 @@ describe('handleMediaRequest', () => {
     })
 
     it('Range: bytes=50-99 で末尾のデータを返す', async () => {
-      const req: ProtocolRequest = {
-        url: makeMediaUrl('clip-001.mp4'),
-        headers: { get: (name: string) => (name === 'range' ? 'bytes=50-99' : null) },
-      }
+      const req = makeReq(makeMediaUrl('clip-001.mp4'), 'bytes=50-99')
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.status).toBe(206)
       expect(res.headers['Content-Range']).toBe('bytes 50-99/100')
@@ -331,47 +303,32 @@ describe('handleMediaRequest', () => {
     })
 
     it('Range なし（ヘッダーなし）で 200 OK を返す', async () => {
-      const req: ProtocolRequest = {
-        url: makeMediaUrl('clip-001.mp4'),
-        headers: { get: () => null },
-      }
+      const req = makeReq(makeMediaUrl('clip-001.mp4'))
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.status).toBe(200)
     })
 
     it('Range なしのとき Content-Range ヘッダーを含まず Content-Length がファイルサイズになる', async () => {
-      const req: ProtocolRequest = {
-        url: makeMediaUrl('clip-001.mp4'),
-        headers: { get: () => null },
-      }
+      const req = makeReq(makeMediaUrl('clip-001.mp4'))
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.headers['Content-Range']).toBeUndefined()
       expect(res.headers['Content-Length']).toBe('100')
     })
 
     it('応答 Content-Type は video/mp4 を含む', async () => {
-      const req: ProtocolRequest = {
-        url: makeMediaUrl('clip-001.mp4'),
-        headers: { get: (name: string) => (name === 'range' ? 'bytes=0-9' : null) },
-      }
+      const req = makeReq(makeMediaUrl('clip-001.mp4'), 'bytes=0-9')
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.headers['Content-Type']).toContain('video/mp4')
     })
 
     it('Accept-Ranges: bytes ヘッダーが付く', async () => {
-      const req: ProtocolRequest = {
-        url: makeMediaUrl('clip-001.mp4'),
-        headers: { get: (name: string) => (name === 'range' ? 'bytes=0-9' : null) },
-      }
+      const req = makeReq(makeMediaUrl('clip-001.mp4'), 'bytes=0-9')
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.headers['Accept-Ranges']).toBe('bytes')
     })
 
     it('ボディはストリーム（ReadableStream）であり Buffer でない', async () => {
-      const req: ProtocolRequest = {
-        url: makeMediaUrl('clip-001.mp4'),
-        headers: { get: (name: string) => (name === 'range' ? 'bytes=0-9' : null) },
-      }
+      const req = makeReq(makeMediaUrl('clip-001.mp4'), 'bytes=0-9')
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       // Buffer や null ではなく ReadableStream を返す
       expect(res.body).not.toBeNull()
@@ -382,10 +339,7 @@ describe('handleMediaRequest', () => {
     it('URL にスペースを含むファイル名（%20 エンコード）でも正常に処理される', async () => {
       const spacedFile = path.join(videoFolder, 'clip 002.mp4')
       createTestFile(spacedFile, Buffer.alloc(50, 0xff))
-      const req: ProtocolRequest = {
-        url: 'media://videos/clip%20002.mp4',
-        headers: { get: (name: string) => (name === 'range' ? 'bytes=0-9' : null) },
-      }
+      const req = makeReq('media://videos/clip%20002.mp4', 'bytes=0-9')
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.status).toBe(206)
     })
@@ -407,10 +361,7 @@ describe('handleMediaRequest', () => {
     })
 
     it('Range ヘッダーなし → status 200 OK、Content-Length=fileSize、Accept-Ranges=bytes、Content-Range なし', async () => {
-      const req: ProtocolRequest = {
-        url: makeMediaUrl('split-test.mp4'),
-        headers: { get: () => null },
-      }
+      const req = makeReq(makeMediaUrl('split-test.mp4'))
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.status).toBe(200)
       expect(res.headers['Content-Length']).toBe(String(FILE_SIZE))
@@ -419,20 +370,14 @@ describe('handleMediaRequest', () => {
     })
 
     it('Range: bytes=0- → status 206、Content-Range "bytes 0-(fileSize-1)/fileSize"', async () => {
-      const req: ProtocolRequest = {
-        url: makeMediaUrl('split-test.mp4'),
-        headers: { get: (name: string) => (name === 'range' ? 'bytes=0-' : null) },
-      }
+      const req = makeReq(makeMediaUrl('split-test.mp4'), 'bytes=0-')
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.status).toBe(206)
       expect(res.headers['Content-Range']).toBe(`bytes 0-${FILE_SIZE - 1}/${FILE_SIZE}`)
     })
 
     it('Range: bytes=10-20 → status 206、Content-Range "bytes 10-20/fileSize"、Content-Length "11"', async () => {
-      const req: ProtocolRequest = {
-        url: makeMediaUrl('split-test.mp4'),
-        headers: { get: (name: string) => (name === 'range' ? 'bytes=10-20' : null) },
-      }
+      const req = makeReq(makeMediaUrl('split-test.mp4'), 'bytes=10-20')
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.status).toBe(206)
       expect(res.headers['Content-Range']).toBe(`bytes 10-20/${FILE_SIZE}`)
@@ -453,63 +398,38 @@ describe('handleMediaRequest', () => {
     })
 
     it('Range: bytes=-1 → 416 を返す', async () => {
-      const req: ProtocolRequest = {
-        url: makeMediaUrl('clip-001.mp4'),
-        headers: { get: (name: string) => (name === 'range' ? 'bytes=-1' : null) },
-      }
+      const req = makeReq(makeMediaUrl('clip-001.mp4'), 'bytes=-1')
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.status).toBe(416)
     })
 
     it('Range: bytes=100-200（ファイルサイズ超過: start >= fileSize) → 416 を返す', async () => {
       // ファイルは 100 バイト (0-99)。bytes=100-200 は範囲外
-      const req: ProtocolRequest = {
-        url: makeMediaUrl('clip-001.mp4'),
-        headers: {
-          get: (name: string) => (name === 'range' ? 'bytes=100-200' : null),
-        },
-      }
+      const req = makeReq(makeMediaUrl('clip-001.mp4'), 'bytes=100-200')
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.status).toBe(416)
     })
 
     it('Range: bytes=50-20（start > end）→ 416 を返す', async () => {
-      const req: ProtocolRequest = {
-        url: makeMediaUrl('clip-001.mp4'),
-        headers: { get: (name: string) => (name === 'range' ? 'bytes=50-20' : null) },
-      }
+      const req = makeReq(makeMediaUrl('clip-001.mp4'), 'bytes=50-20')
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.status).toBe(416)
     })
 
     it('Range: bytes=abc-def（非数値）→ 416 を返す', async () => {
-      const req: ProtocolRequest = {
-        url: makeMediaUrl('clip-001.mp4'),
-        headers: {
-          get: (name: string) => (name === 'range' ? 'bytes=abc-def' : null),
-        },
-      }
+      const req = makeReq(makeMediaUrl('clip-001.mp4'), 'bytes=abc-def')
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.status).toBe(416)
     })
 
     it('Range: invalid-format → 416 を返す', async () => {
-      const req: ProtocolRequest = {
-        url: makeMediaUrl('clip-001.mp4'),
-        headers: {
-          get: (name: string) =>
-            name === 'range' ? 'invalid-format-range' : null,
-        },
-      }
+      const req = makeReq(makeMediaUrl('clip-001.mp4'), 'invalid-format-range')
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.status).toBe(416)
     })
 
     it('416 応答に Content-Range: bytes */fileSize ヘッダーを含む', async () => {
-      const req: ProtocolRequest = {
-        url: makeMediaUrl('clip-001.mp4'),
-        headers: { get: (name: string) => (name === 'range' ? 'bytes=-1' : null) },
-      }
+      const req = makeReq(makeMediaUrl('clip-001.mp4'), 'bytes=-1')
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.status).toBe(416)
       expect(res.headers['Content-Range']).toBe('bytes */100')
@@ -518,10 +438,7 @@ describe('handleMediaRequest', () => {
     // ── (B) 416 返却前の構造化ログ ───────────────────────────────────────────
 
     it('不正 Range 時に ERROR ログ "protocol.invalidRange" を出力する', async () => {
-      const req: ProtocolRequest = {
-        url: makeMediaUrl('clip-001.mp4'),
-        headers: { get: (name: string) => (name === 'range' ? 'bytes=-1' : null) },
-      }
+      const req = makeReq(makeMediaUrl('clip-001.mp4'), 'bytes=-1')
       await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(logger.error).toHaveBeenCalledWith(
         'protocol.invalidRange',
@@ -530,10 +447,7 @@ describe('handleMediaRequest', () => {
     })
 
     it('start > end の不正 Range でも "protocol.invalidRange" ログを出力する', async () => {
-      const req: ProtocolRequest = {
-        url: makeMediaUrl('clip-001.mp4'),
-        headers: { get: (name: string) => (name === 'range' ? 'bytes=50-20' : null) },
-      }
+      const req = makeReq(makeMediaUrl('clip-001.mp4'), 'bytes=50-20')
       await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(logger.error).toHaveBeenCalledWith(
         'protocol.invalidRange',
@@ -558,10 +472,7 @@ describe('handleMediaRequest', () => {
     })
 
     it('Range: bytes=0-0（先頭 1 バイトのみ）で 206 を返す', async () => {
-      const req: ProtocolRequest = {
-        url: makeMediaUrl('clip-001.mp4'),
-        headers: { get: (name: string) => (name === 'range' ? 'bytes=0-0' : null) },
-      }
+      const req = makeReq(makeMediaUrl('clip-001.mp4'), 'bytes=0-0')
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.status).toBe(206)
       expect(res.headers['Content-Range']).toBe('bytes 0-0/256')
@@ -571,12 +482,7 @@ describe('handleMediaRequest', () => {
     })
 
     it('Range: bytes=255-255（末尾 1 バイトのみ）で 206 を返す', async () => {
-      const req: ProtocolRequest = {
-        url: makeMediaUrl('clip-001.mp4'),
-        headers: {
-          get: (name: string) => (name === 'range' ? 'bytes=255-255' : null),
-        },
-      }
+      const req = makeReq(makeMediaUrl('clip-001.mp4'), 'bytes=255-255')
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.status).toBe(206)
       expect(res.headers['Content-Range']).toBe('bytes 255-255/256')
@@ -585,21 +491,13 @@ describe('handleMediaRequest', () => {
     })
 
     it('Range: bytes=256-256（ファイルサイズ = 256、インデックス 256 は範囲外）→ 416', async () => {
-      const req: ProtocolRequest = {
-        url: makeMediaUrl('clip-001.mp4'),
-        headers: {
-          get: (name: string) => (name === 'range' ? 'bytes=256-256' : null),
-        },
-      }
+      const req = makeReq(makeMediaUrl('clip-001.mp4'), 'bytes=256-256')
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.status).toBe(416)
     })
 
     it('Range: bytes=0- でファイル全体を取得できる', async () => {
-      const req: ProtocolRequest = {
-        url: makeMediaUrl('clip-001.mp4'),
-        headers: { get: (name: string) => (name === 'range' ? 'bytes=0-' : null) },
-      }
+      const req = makeReq(makeMediaUrl('clip-001.mp4'), 'bytes=0-')
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.status).toBe(206)
       expect(res.headers['Content-Range']).toBe('bytes 0-255/256')
@@ -609,12 +507,7 @@ describe('handleMediaRequest', () => {
     })
 
     it('Range: bytes=128- で後半のデータを取得できる', async () => {
-      const req: ProtocolRequest = {
-        url: makeMediaUrl('clip-001.mp4'),
-        headers: {
-          get: (name: string) => (name === 'range' ? 'bytes=128-' : null),
-        },
-      }
+      const req = makeReq(makeMediaUrl('clip-001.mp4'), 'bytes=128-')
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.status).toBe(206)
       expect(res.headers['Content-Range']).toBe('bytes 128-255/256')
@@ -632,10 +525,7 @@ describe('handleMediaRequest', () => {
     it('0 バイトのファイルに対して 404 を返す', async () => {
       const zeroFile = path.join(videoFolder, 'empty.mp4')
       fs.writeFileSync(zeroFile, Buffer.alloc(0))
-      const req: ProtocolRequest = {
-        url: makeMediaUrl('empty.mp4'),
-        headers: { get: () => null },
-      }
+      const req = makeReq(makeMediaUrl('empty.mp4'))
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.status).toBe(404)
     })
@@ -651,10 +541,7 @@ describe('handleMediaRequest', () => {
         },
         createReadStream(p, opts) { return fs.createReadStream(p, opts) },
       }
-      const req: ProtocolRequest = {
-        url: makeMediaUrl('secret.mp4'),
-        headers: { get: () => null },
-      }
+      const req = makeReq(makeMediaUrl('secret.mp4'))
       const res = await handleMediaRequest(req, videoFolder, errorFs, logger)
       expect(res.status).toBe(404)
       expect(logger.warn).toHaveBeenCalledWith(
@@ -664,10 +551,7 @@ describe('handleMediaRequest', () => {
     })
 
     it('ENOENT エラー時は warn ログなしで 404 を返す', async () => {
-      const req: ProtocolRequest = {
-        url: makeMediaUrl('nonexistent.mp4'),
-        headers: { get: () => null },
-      }
+      const req = makeReq(makeMediaUrl('nonexistent.mp4'))
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.status).toBe(404)
       expect(logger.warn).not.toHaveBeenCalled()
@@ -679,19 +563,13 @@ describe('handleMediaRequest', () => {
       // ファイル名: "50%.mp4"（URLエンコードで %25 → %）
       const percentFile = path.join(videoFolder, '50%.mp4')
       fs.writeFileSync(percentFile, Buffer.alloc(50, 0xAA))
-      const req: ProtocolRequest = {
-        url: 'media://videos/50%25.mp4',
-        headers: { get: (name: string) => (name === 'range' ? 'bytes=0-9' : null) },
-      }
+      const req = makeReq('media://videos/50%25.mp4', 'bytes=0-9')
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.status).toBe(206)
     })
 
     it('%2e%2e 系の二重エンコード URL は 403 で拒否される（既存動作維持）', async () => {
-      const req: ProtocolRequest = {
-        url: 'media://videos/%252e%252e%2fclip.mp4',
-        headers: { get: () => null },
-      }
+      const req = makeReq('media://videos/%252e%252e%2fclip.mp4')
       const res = await handleMediaRequest(req, videoFolder, fsAdapter, logger)
       expect(res.status).toBe(403)
     })
@@ -724,29 +602,11 @@ describe('toMediaUri', () => {
     const filePath = path.join(tmpDir, fileName)
     fs.writeFileSync(filePath, Buffer.alloc(64, 0x01))
 
-    const mockFsOps: FsAdapter = {
-      async realpath(p: string): Promise<string> {
-        return fs.promises.realpath(p)
-      },
-      async stat(p: string): Promise<{ size: number }> {
-        const s = await fs.promises.stat(p)
-        return { size: s.size }
-      },
-      createReadStream(
-        p: string,
-        opts?: { start: number; end: number },
-      ): NodeJS.ReadableStream {
-        return fs.createReadStream(p, opts)
-      },
-    }
-
+    const mockFsOps = makeRealFsAdapter()
     const mockLogger: ProtocolLogger = { error: vi.fn(), warn: vi.fn() }
 
     const uri = toMediaUri(filePath)
-    const req: ProtocolRequest = {
-      url: uri,
-      headers: { get: () => null },
-    }
+    const req = makeReq(uri)
 
     const res = await handleMediaRequest(req, tmpDir, mockFsOps, mockLogger)
 
