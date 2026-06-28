@@ -1,0 +1,59 @@
+/*
+ * src/renderer/overlay/styles.css — T17
+ *
+ * overlayView の透過・フェード CSS。
+ *
+ * 設計方針:
+ *   - html/body/video 背景は完全透明（overlayView 背景色 #00000000 と合わせる）
+ *   - body は pointer-events:none で下層（siteView / hotspotView）へパススルー
+ *   - #overlay-container の opacity を JS が 0↔1 で変更してフェードを実現する
+ *   - will-change:opacity でコンポジターレイヤーに昇格させ、黒チラを抑制する
+ *
+ * 視覚確認（黒チラなし・透過合成）は実描画環境に依存するため
+ * E2E / [M] テスト（UO-06, M-03）に委ねる。
+ */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+}
+
+body {
+  /* マウスイベントを下層ウィンドウへ完全パススルー */
+  pointer-events: none;
+}
+
+#overlay-container {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  pointer-events: none;
+
+  /*
+   * フェード制御: JS が style.opacity を変更する（0=非表示 / 1=表示）
+   * アイドル時は opacity:0 を維持することで黒チラを防ぐ。
+   * will-change でコンポジターレイヤーに昇格させ GPU フェードを有効化する。
+   */
+  opacity: 0;
+  will-change: opacity;
+  transition: opacity 2000ms ease-in-out;
+}
+
+#ad-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: transparent;
+  /*
+   * opacity は親 #overlay-container で一括制御するため
+   * ここでは設定しない。
+   */
+}

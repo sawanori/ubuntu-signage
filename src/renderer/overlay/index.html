@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; media-src media:; style-src 'self' 'unsafe-inline'" />
+    <title>Overlay</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- 動画コンテナ — T16/T17 で実装 -->
+    <div id="overlay-container">
+      <!--
+        display:none を使わない理由: requestVideoFrameCallback は
+        コンポジターへフレームが送られた瞬間に発火する。
+        display:none だとコンポジターに乗らないため rvfc が永久に発火しない。
+        可視性は #overlay-container の opacity(0→1) で制御する。
+        視覚確認は E2E / [M] (UO-06, M-03) に委ねる。
+      -->
+      <video
+        id="ad-video"
+        muted
+        autoplay
+        playsinline
+      ></video>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

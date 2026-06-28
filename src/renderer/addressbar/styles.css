@@ -1,0 +1,176 @@
+/**
+ * addressbar/styles.css — アドレスバー renderer スタイル
+ *
+ * 固定高 48px、横幅 100%、ダークテーマ。
+ * 視覚確認は E2E に委ねる。
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 48px;
+  overflow: hidden;
+  background: transparent;
+}
+
+/**
+ * アドレスバー本体
+ * 高さ固定 48px、横幅 100%、ダークグレー背景、フレックスレイアウト。
+ */
+.addressbar {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 48px;
+  background: #1e1e2e;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0 8px;
+  gap: 6px;
+}
+
+/**
+ * 汎用ボタン
+ */
+.addressbar__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #d0d0e0;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  -webkit-app-region: no-drag;
+  user-select: none;
+}
+
+.addressbar__btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.addressbar__btn:active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/** アイコンのみのボタン（再読込） */
+.addressbar__btn--icon {
+  width: 32px;
+  padding: 0;
+  font-size: 16px;
+}
+
+/** 表示ボタン（プライマリ） */
+.addressbar__btn--primary {
+  background: #4a6fa5;
+  border-color: #5a7fc5;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.addressbar__btn--primary:hover {
+  background: #5a7fc5;
+}
+
+.addressbar__btn--primary:active {
+  background: #3a5f95;
+}
+
+/**
+ * 広告ループトグルボタン（小型）
+ * ON 状態は背景色を変えて視覚的に区別する。
+ */
+.addressbar__btn--loop {
+  gap: 4px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+.addressbar__btn--loop[aria-pressed='true'] {
+  background: rgba(100, 200, 120, 0.2);
+  border-color: rgba(100, 200, 120, 0.4);
+  color: #80e090;
+}
+
+.loop-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.loop-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+/**
+ * URL 入力フォーム（URL input + 表示ボタン）
+ */
+.addressbar__form {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  gap: 6px;
+  position: relative;
+}
+
+/**
+ * URL 入力ボックス
+ */
+.addressbar__url-input {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  padding: 0 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: #e0e0f0;
+  font-size: 13px;
+  font-family: 'Courier New', 'Consolas', 'Noto Sans Mono', monospace;
+  outline: none;
+  caret-color: #80a0ff;
+  -webkit-app-region: no-drag;
+}
+
+.addressbar__url-input::placeholder {
+  color: rgba(200, 200, 220, 0.4);
+}
+
+.addressbar__url-input:focus {
+  border-color: rgba(128, 160, 255, 0.6);
+  background: rgba(0, 0, 0, 0.45);
+  box-shadow: 0 0 0 2px rgba(128, 160, 255, 0.15);
+}
+
+/**
+ * バリデーションエラーメッセージ
+ * URL 入力ボックスの下に絶対配置で表示する。
+ */
+.addressbar__error {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  margin-top: 2px;
+  padding: 4px 8px;
+  background: #5c1a1a;
+  border: 1px solid #c44;
+  border-radius: 4px;
+  color: #ffaaaa;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 100;
+}

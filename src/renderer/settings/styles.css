@@ -1,0 +1,371 @@
+/*
+ * T19/T20/T23/T32-UI — settings/styles.css  (redesigned: dark glass, 680px)
+ *
+ * アクセントカラー: #4f8cff (primary/focus/selected) | #34d399 (loop ON) | #ef4444 (quit)
+ * 視覚/開閉アニメーションの確認は E2E/[M](E2E-04) に委ねる。
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(8, 10, 14, 0.72);
+  backdrop-filter: blur(8px) saturate(120%);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  font-size: 15px;
+  color: #fff;
+}
+
+/* ── パネル本体（中央固定）───────────────────────────────────────────────── */
+.settings-panel {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 680px;
+  max-width: 92vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  background: #15171c;
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 24px;
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.6),
+    0 2px 8px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+}
+
+/* hidden 属性がある場合は確実に非表示にする（flex が上書きしないよう明示） */
+.settings-panel[hidden] {
+  display: none;
+}
+
+/* ── ヘッダー ────────────────────────────────────────────────────────────── */
+.panel-header {
+  padding: 28px 32px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.panel-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #fff;
+}
+
+.close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 18px;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+/* ── パネル本文 ──────────────────────────────────────────────────────────── */
+.panel-body {
+  padding: 24px 32px;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+/* ── 行レイアウト ─────────────────────────────────────────────────────────── */
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.setting-row--column {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.setting-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+  letter-spacing: 0;
+  min-width: 120px;
+}
+
+/* ── ループ ON/OFF トグル（iOS スイッチ）────────────────────────────────── */
+/* JS が textContent で "ON"/"OFF" を書き込むため font-size:0 で不可視化。
+   ノブは ::before 擬似要素で描画する。                                       */
+#loop-toggle {
+  position: relative;
+  width: 56px;
+  height: 32px;
+  border-radius: 16px;
+  border: none;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.16);
+  cursor: pointer;
+  font-size: 0;
+  flex-shrink: 0;
+  transition: background 0.2s ease;
+}
+
+#loop-toggle::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+#loop-toggle[aria-pressed="true"] {
+  background: #34d399;
+}
+
+#loop-toggle[aria-pressed="true"]::before {
+  transform: translateX(24px);
+}
+
+/* ── 再生間隔 セグメントコントロール ──────────────────────────────────── */
+.interval-group {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  padding: 5px;
+  display: flex;
+  gap: 4px;
+  width: 100%;
+}
+
+.interval-btn {
+  flex: 1;
+  padding: 12px 8px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.interval-btn:hover:not(.interval-btn--selected) {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* JS が selectInterval() 後に付与 */
+.interval-btn--selected {
+  background: #4f8cff;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 2px 10px rgba(79, 140, 255, 0.35);
+}
+
+/* ── サイト URL 入力 ───────────────────────────────────────────────────── */
+.url-input-group {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.url-input {
+  flex: 1;
+  min-width: 0;
+  height: 46px;
+  padding: 0 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  color: #fff;
+  font-size: 15px;
+  outline: none;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.url-input:focus {
+  border-color: #4f8cff;
+  box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.25);
+}
+
+/* JS が validateUrl() 不正時に付与 */
+.url-input--error {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2) !important;
+}
+
+#site-url-save-btn {
+  height: 46px;
+  padding: 0 24px;
+  background: #4f8cff;
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+
+#site-url-save-btn:hover {
+  background: #3b78f0;
+}
+
+/* JS が hidden を外してエラーメッセージをセット */
+.error-msg {
+  font-size: 13px;
+  color: #f87171;
+  margin-top: 2px;
+}
+
+/* ── 動画フォルダ選択 ──────────────────────────────────────────────────── */
+.folder-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.folder-path {
+  flex: 1;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  padding: 12px 14px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#pick-folder-btn {
+  height: 46px;
+  padding: 0 18px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+
+#pick-folder-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* ── フッター：終了（左）＋ テスト再生（右）────────────────────────────── */
+.panel-footer {
+  padding: 22px 32px 26px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+/* 終了ボタン（通常状態） */
+#quit-btn {
+  height: 50px;
+  padding: 0 24px;
+  background: transparent;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 14px;
+  color: rgba(239, 68, 68, 0.85);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+#quit-btn:hover {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+
+/* 終了ボタン（確認待ち: JS が .quit-btn--confirm を付与） */
+#quit-btn.quit-btn--confirm {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: #fff;
+  animation: quit-pulse 0.8s ease-in-out infinite;
+}
+
+#quit-btn.quit-btn--confirm:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
+}
+
+@keyframes quit-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.7; }
+}
+
+/* テスト再生ボタン（IDLE 時のみ有効） */
+#test-play-btn {
+  height: 50px;
+  padding: 0 36px;
+  background: #4f8cff;
+  border: none;
+  border-radius: 14px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    opacity 0.15s;
+}
+
+#test-play-btn:hover:not(:disabled) {
+  background: #3b78f0;
+}
+
+#test-play-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

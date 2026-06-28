@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Signage Overlay
+Comment=Digital Signage Video Overlay (autostart fallback)
+# AppImage のフルパス。install.sh が実際のパスに書き換える
+Exec=/opt/ubuntuapp/ubuntuapp.AppImage
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=5

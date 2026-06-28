@@ -1,0 +1,90 @@
+/**
+ * T22 — hotspot renderer スタイル
+ *
+ * 全体: pointer-events:none（下層 siteView へのタップを透過させる）
+ * 四隅の .corner 領域のみ pointer-events:auto（透明なタップ受付エリア）
+ *
+ * 視覚確認・実タップ動作は E2E/[M]（E2E-13, UH-01〜UH-03）に委ねる。
+ */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  /* 全体は pointer-events:none — 下層 siteView/overlayView へタップを透過 */
+  pointer-events: none;
+}
+
+/**
+ * 四隅のタップ受付領域（40×40px）
+ * 背景は透明。pointer-events:auto のみを有効化し、
+ * 下層 View への透過を維持しつつ隅タップだけを捕捉する。
+ *
+ * デバッグ時は background を rgba(255,0,0,0.2) に変えて領域を可視化できる。
+ */
+.corner {
+  position: fixed;
+  width: 40px;
+  height: 40px;
+  background: transparent;
+  pointer-events: auto;
+}
+
+.corner-top-left {
+  top: 0;
+  left: 0;
+}
+
+.corner-top-right {
+  top: 0;
+  right: 0;
+}
+
+.corner-bottom-left {
+  bottom: 0;
+  left: 0;
+}
+
+.corner-bottom-right {
+  bottom: 0;
+  right: 0;
+}
+
+/**
+ * アドレスバートグルゾーン基底（.zone クラス共通スタイル）
+ * .corner と同様に透明・pointer-events:auto で下層 View へのタップを透過させない。
+ */
+.zone {
+  position: fixed;
+  background: transparent;
+  pointer-events: auto;
+}
+
+/**
+ * 上部中央タップゾーン（アドレスバートグル）
+ * 幅: 200px、高さ: 32px（マネージャー確定: §10.5）
+ * 中央配置: left:50% + translateX(-50%)
+ *
+ * 衝突回避確認（§6.7）:
+ *   - .corner-top-left:  top:0, left:0, 40x40px
+ *   - .corner-top-right: top:0, right:0, 40x40px
+ *   - .zone-top-center:  top:0, left:50%-100px〜50%+100px（中央200px）
+ *   最小幅640px環境: top-left=0-40px, center=220-420px, top-right=600-640px → 重複なし ✓
+ *
+ * デバッグ時は background を rgba(0,255,0,0.2) に変えて領域を可視化できる。
+ *
+ * pointer-events はデフォルト 'auto'。
+ * アドレスバー VISIBLE 中は Main が hotspot:set-address-zone-enabled {enabled:false} を送信し
+ * main.ts が 'none' に切り替える（§2.5 zone-disable 機構）。
+ */
+.zone-top-center {
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 200px;
+  height: 32px;
+}

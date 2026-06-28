@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'"
+    />
+    <title>アドレスバー</title>
+    <!--
+      addressbar/index.html — アドレスバー renderer
+      高さ固定 48px。ダークテーマ。
+      構成: [↻再読込] [URL 入力ボックス] [表示ボタン] [広告ループトグル(小)]
+      視覚確認・実操作の確認は E2E に委ねる。
+    -->
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="addressbar">
+      <!-- 再読込ボタン -->
+      <button
+        id="reload-btn"
+        class="addressbar__btn addressbar__btn--icon"
+        aria-label="再読込"
+        title="再読込"
+      >↻</button>
+
+      <!-- URL 入力フォーム -->
+      <form id="navigate-form" class="addressbar__form">
+        <input
+          id="url-input"
+          class="addressbar__url-input"
+          type="text"
+          placeholder="https://example.com"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+          aria-label="URL"
+        />
+        <!-- バリデーションエラーメッセージ（非表示状態で起動） -->
+        <span id="url-error" class="addressbar__error" hidden aria-live="polite"></span>
+
+        <!-- 表示ボタン（Enter キーと同等） -->
+        <button
+          id="navigate-btn"
+          type="submit"
+          class="addressbar__btn addressbar__btn--primary"
+          aria-label="表示"
+        >表示</button>
+      </form>
+
+      <!-- 広告ループトグル（小型） -->
+      <button
+        id="loop-toggle"
+        class="addressbar__btn addressbar__btn--loop"
+        aria-label="広告ループ ON/OFF"
+        aria-pressed="false"
+        title="広告ループ ON/OFF"
+      >
+        <span class="loop-icon">🔁</span>
+        <span id="loop-label" class="loop-label">OFF</span>
+      </button>
+    </div>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

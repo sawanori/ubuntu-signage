@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'" />
+    <title>Hotspot</title>
+    <!--
+      T22: hotspot renderer
+      全体は pointer-events:none。四隅 .corner のみ pointer-events:auto（透明）。
+      視覚/実タップは E2E/[M]（E2E-13, UH-01〜UH-03）に委ねる。
+    -->
+    <link rel="stylesheet" href="./hotspot.css" />
+  </head>
+  <body>
+    <!-- 四隅のタップ検出領域（透明・pointer-events:auto） -->
+    <div class="corner corner-top-left" aria-label="corner-top-left"></div>
+    <div class="corner corner-top-right" aria-label="corner-top-right"></div>
+    <div class="corner corner-bottom-left" aria-label="corner-bottom-left"></div>
+    <div class="corner corner-bottom-right" aria-label="corner-bottom-right"></div>
+    <!-- 上部中央アドレスバートグルゾーン（透明・幅200px・高さ32px） -->
+    <!-- pointer-events は Main の hotspot:set-address-zone-enabled IPC で動的切替 -->
+    <div class="zone zone-top-center" aria-label="address-bar-zone"></div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

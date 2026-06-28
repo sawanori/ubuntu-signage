@@ -1,0 +1,19 @@
+[Unit]
+Description=ubuntuapp Digital Signage Overlay
+After=graphical-session.target
+Wants=graphical-session.target
+
+[Service]
+Type=simple
+# DISPLAY / WAYLAND_DISPLAY / XDG_RUNTIME_DIR を明示設定（T29 で確定値に更新）
+Environment=DISPLAY=:0
+Environment=WAYLAND_DISPLAY=wayland-0
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+ExecStart=/path/to/ubuntuapp.AppImage
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Install]
+WantedBy=graphical-session.target

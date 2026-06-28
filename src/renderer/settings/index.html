@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'"
+    />
+    <title>設定</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!--
+      T19/T20/T23/T32-UI — 設定パネル HTML (redesigned: dark glass, 680px)
+      パネルは hidden 状態で起動し、settings:open 受信で表示される。
+    -->
+    <div id="settings-panel" class="settings-panel" hidden>
+
+      <!-- ヘッダー -->
+      <div class="panel-header">
+        <h2 class="panel-title">設定</h2>
+        <button id="close-btn" class="close-btn" aria-label="閉じる">✕</button>
+      </div>
+
+      <!-- 本文 -->
+      <div class="panel-body">
+
+        <!-- 広告ループ ON/OFF トグル（iOS スイッチ） -->
+        <div class="setting-row">
+          <span class="setting-label">広告ループ</span>
+          <!-- JS が textContent を "ON"/"OFF" に書き換えるため子要素なし。::before でノブを描画 -->
+          <button id="loop-toggle" aria-pressed="false"></button>
+        </div>
+
+        <!-- 再生間隔 セグメントコントロール -->
+        <div class="setting-row setting-row--column">
+          <span class="setting-label">再生間隔</span>
+          <div class="interval-group" role="group" aria-label="再生間隔の選択">
+            <button class="interval-btn" data-minutes="5">5分</button>
+            <button class="interval-btn" data-minutes="10">10分</button>
+            <button class="interval-btn" data-minutes="15">15分</button>
+            <button class="interval-btn" data-minutes="30">30分</button>
+          </div>
+        </div>
+
+        <!-- サイト URL 入力 -->
+        <div class="setting-row setting-row--column">
+          <span class="setting-label">サイト URL</span>
+          <div class="url-input-group">
+            <input
+              id="site-url-input"
+              class="url-input"
+              type="url"
+              placeholder="https://example.com"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <button id="site-url-save-btn">保存</button>
+          </div>
+          <!-- validateUrl() のエラーメッセージ表示。JS が hidden を制御 -->
+          <span id="url-error" class="error-msg" hidden></span>
+        </div>
+
+        <!-- 動画フォルダ選択 -->
+        <div class="setting-row setting-row--column">
+          <span class="setting-label">動画フォルダ</span>
+          <div class="folder-row">
+            <span id="folder-path-display" class="folder-path">（未設定）</span>
+            <button id="pick-folder-btn">フォルダを選択</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- フッター：終了（左）＋ テスト再生（右） -->
+      <div class="panel-footer">
+        <button id="quit-btn" aria-label="アプリを終了">終了</button>
+        <button id="test-play-btn">今すぐテスト再生</button>
+      </div>
+
+    </div>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

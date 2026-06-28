@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <!--
+      start/index.html — スタート画面
+      ネットワークアクセスなし（file:// ロード）。
+      外部リソース参照禁止（script-src/connect-src は 'none'）。
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'unsafe-inline'"
+    />
+    <title>スタート</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background: #1a1a2e;
+        color: #e0e0e0;
+        font-family: 'Noto Sans JP', 'Yu Gothic', 'Hiragino Sans', 'Meiryo', sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+
+      .start-container {
+        text-align: center;
+        max-width: 480px;
+        padding: 32px;
+      }
+
+      .start-icon {
+        font-size: 64px;
+        margin-bottom: 24px;
+        opacity: 0.8;
+      }
+
+      .start-title {
+        font-size: 28px;
+        font-weight: 600;
+        margin: 0 0 12px;
+        color: #ffffff;
+        letter-spacing: 0.02em;
+      }
+
+      .start-subtitle {
+        font-size: 16px;
+        color: #a0a0b0;
+        margin: 0 0 32px;
+        line-height: 1.6;
+      }
+
+      .start-hint-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .start-hint-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        padding: 14px 18px;
+        font-size: 14px;
+        color: #c0c0d0;
+        text-align: left;
+      }
+
+      .hint-key {
+        display: inline-block;
+        background: rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+        padding: 3px 8px;
+        font-family: 'Courier New', 'Consolas', monospace;
+        font-size: 12px;
+        white-space: nowrap;
+        color: #e0e0e0;
+        flex-shrink: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+      スタート画面: siteUrl が未設定のとき siteView に loadFile() で表示される。
+      ネットワークアクセスなし。外部スクリプト・スタイル参照なし。
+      視覚確認は E2E (E2E-09: 起動時 siteUrl='' → startPage 表示) に委ねる。
+    -->
+    <div class="start-container">
+      <div class="start-icon">🖥️</div>
+      <h1 class="start-title">URLを入力してください</h1>
+      <p class="start-subtitle">
+        表示するサイネージのURLをアドレスバーに入力してください。
+      </p>
+      <ul class="start-hint-list">
+        <li class="start-hint-item">
+          <span class="hint-key">Ctrl + L</span>
+          <span>アドレスバーを表示する（キーボード）</span>
+        </li>
+        <li class="start-hint-item">
+          <span class="hint-key">画面上部中央をタップ</span>
+          <span>アドレスバーを表示する（タッチ / Wayland）</span>
+        </li>
+      </ul>
+    </div>
+  </body>
+</html>

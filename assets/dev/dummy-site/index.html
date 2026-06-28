@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>疑似サイネージサイト（開発用）</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        width: 100vw;
+        height: 100vh;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Arial', sans-serif;
+        color: #e0e0e0;
+        overflow: hidden;
+      }
+      .logo {
+        font-size: 80px;
+        font-weight: bold;
+        color: #e94560;
+        text-shadow: 0 0 20px rgba(233,69,96,0.5);
+        margin-bottom: 20px;
+      }
+      .subtitle {
+        font-size: 28px;
+        color: #a8dadc;
+        margin-bottom: 40px;
+      }
+      .ticker {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(233,69,96,0.9);
+        padding: 12px 0;
+        overflow: hidden;
+      }
+      .ticker-text {
+        display: inline-block;
+        white-space: nowrap;
+        animation: scroll 20s linear infinite;
+        font-size: 20px;
+        font-weight: bold;
+        padding-left: 100%;
+      }
+      @keyframes scroll {
+        0%   { transform: translateX(0); }
+        100% { transform: translateX(-100%); }
+      }
+      .clock {
+        font-size: 48px;
+        color: #a8dadc;
+        font-family: monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+      NOTE: このファイルは静的 HTML のため X-Frame-Options ヘッダーを直接設定できません。
+      開発中に X-Frame-Options: SAMEORIGIN の動作を確認するには、以下のコマンドで
+      簡易 HTTP サーバーを起動してください:
+
+      # Python で起動（Content-Security-Policy も付与）:
+      python3 -c "
+      import http.server, os
+      class H(http.server.SimpleHTTPRequestHandler):
+          def end_headers(self):
+              self.send_header('X-Frame-Options','SAMEORIGIN')
+              self.send_header('Content-Security-Policy',\"frame-ancestors 'self'\")
+              super().end_headers()
+      http.server.test(H, port=8080, bind='0.0.0.0')
+      " --directory assets/dev/dummy-site
+
+      または Node.js (serve パッケージ) で:
+      npx serve -p 8080 --set-headers X-Frame-Options=SAMEORIGIN assets/dev/dummy-site
+    -->
+
+    <div class="logo">SIGNAGE</div>
+    <div class="subtitle">デジタルサイネージ 疑似コンテンツ（開発用）</div>
+    <div class="clock" id="clock">00:00:00</div>
+
+    <div class="ticker">
+      <span class="ticker-text">
+        ✦ 最新ニュース ✦ 本日の特売情報 ✦ イベント開催中 ✦ お知らせ ✦ 気温 26°C 晴れ ✦
+        X-Frame-Options テスト用サイネージコンテンツ ✦ Electron overlay テスト環境 ✦
+      </span>
+    </div>
+
+    <script>
+      function updateClock() {
+        const now = new Date()
+        document.getElementById('clock').textContent =
+          now.toLocaleTimeString('ja-JP', { hour12: false })
+      }
+      updateClock()
+      setInterval(updateClock, 1000)
+    </script>
+  </body>
+</html>

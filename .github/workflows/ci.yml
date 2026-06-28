@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-typecheck-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      # ── xvfb 準備（E2E テスト用・T07.5 以降で有効化） ──────────────────
+      # E2E テストは以下のコマンドで実行予定:
+      #   xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" npm run test:e2e
+      - name: Install xvfb
+        run: sudo apt-get update -y && sudo apt-get install -y xvfb
+
+      # ── Unit テスト（Vitest・xvfb 不要） ──────────────────────────────
+      - name: Unit tests
+        run: npm run test
