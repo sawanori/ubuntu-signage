@@ -2,6 +2,15 @@
   "name": "ubuntuapp",
   "version": "0.1.0",
   "description": "Digital signage video overlay application",
+  "author": "sawanori",
+  "license": "UNLICENSED",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sawanori/ubuntu-signage"
+  },
+  "homepage": "https://github.com/sawanori/ubuntu-signage",
+  "desktopName": "ubuntuapp",
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
@@ -13,8 +22,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "xvfb-run -a playwright test",
-    "build:linux-arm64": "electron-builder --linux --arm64",
-    "build:linux-x64": "electron-builder --linux --x64"
+    "build:linux-arm64": "electron-vite build && electron-builder --linux --arm64",
+    "build:linux-x64": "electron-vite build && electron-builder --linux --x64"
   },
   "dependencies": {
     "chokidar": "5.0.0",

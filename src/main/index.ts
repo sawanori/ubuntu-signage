@@ -77,6 +77,7 @@ if (!gotLock) {
 // ─── WSL GPU 無効化判定 (修正 A: §A-2) ────────────────────────────────────────
 // /proc/version を読み取り WSL 環境かどうかを判定する。
 // 読み取り失敗時（Linux 以外・権限なし等）は null を渡して false 扱いにする。
+let _gpuProcVersion: string | null = null
 {
   let procVersion: string | null = null
   try {
@@ -86,6 +87,7 @@ if (!gotLock) {
     // logWarn は巻き上げ関数宣言のため、この位置から呼び出し可能
     logWarn('gpu.procVersionReadFailed')
   }
+  _gpuProcVersion = procVersion
   const gpuParams = { env: process.env as Record<string, string | undefined>, procVersion }
   if (shouldDisableGpu(gpuParams)) {
     const phase = gpuFallbackPhase(gpuParams.env)
@@ -101,6 +103,46 @@ if (!gotLock) {
       app.commandLine.appendSwitch(sw.name, sw.value)
     }
     logWarn('gpu.hardwareAccelerationDisabled', { phase, hardwareAccelerationDisabled, gpuSwitches })
+  }
+}
+
+// ─── VA-API HW デコード有効化 — 実機のみ、WSL では無効 (#4) ────────────────────
+// shouldDisableGpu が false（= 実ハードウェア）の場合のみ VaapiVideoDecoder を有効化する。
+// WSL/開発環境では GPU が使えないため追加しない。
+// app.whenReady() より前に呼ぶ必要がある。
+{
+  const _gpuParams = {
+    env: process.env as Record<string, string | undefined>,
+    procVersion: _gpuProcVersion,
+  }
+  if (!shouldDisableGpu(_gpuParams)) {
+    // enable-features が既存スイッチと重複しないようにコンマ連結
+    const existing = app.commandLine.getSwitchValue('enable-features')
+    const newValue =
+      existing !== '' && existing !== undefined
+        ? `${existing},VaapiVideoDecoder`
+        : 'VaapiVideoDecoder'
+    app.commandLine.appendSwitch('enable-features', newValue)
+    logWarn('gpu.vaapiVideoDecoderEnabled', { event: 'gpu.vaapiVideoDecoderEnabled', enableFeatures: newValue })
+  }
+}
+
+// ─── Wayland 透過合成フォールバック — Wayland 実機のみ、WSL では無効 (#8) ──────
+// Wayland セッションかつ実ハードウェアの場合のみ ozone-platform-hint=x11 を追加する。
+// X11 セッションはデフォルトで問題なく、WSL では適用しない。
+// app.whenReady() より前に呼ぶ必要がある。
+{
+  const _gpuParamsForWayland = {
+    env: process.env as Record<string, string | undefined>,
+    procVersion: _gpuProcVersion,
+  }
+  const _isWaylandSession = process.env['XDG_SESSION_TYPE'] === 'wayland'
+  if (_isWaylandSession && !shouldDisableGpu(_gpuParamsForWayland)) {
+    app.commandLine.appendSwitch('ozone-platform-hint', 'x11')
+    logWarn('display.ozonePlatformHintApplied', {
+      event: 'display.ozonePlatformHintApplied',
+      ozonePlatformHint: 'x11',
+    })
   }
 }
 
@@ -199,7 +241,14 @@ app.on('second-instance', (_event, _argv, _workingDirectory, _additionalData) =>
 
 // ─── アプリライフサイクル ─────────────────────────────────────────────────────
 app.whenReady().then(() => {
-  void main()
+  main().catch((e: unknown) => {
+    logError('main.initFailed', {
+      reason: e instanceof Error ? e.message : String(e),
+      stack: e instanceof Error ? (e.stack ?? '') : '',
+    })
+    app.relaunch()
+    app.quit()
+  })
 })
 
 app.on('window-all-closed', () => {
@@ -520,6 +569,8 @@ async function main(): Promise<void> {
   // failedSinceStart フラグにより、Chromium のエラーページ finish で
   // リトライカウンタがリセットされるバグを防ぐ。
   let siteRetryState = createRetryState()
+  /** PI4-05: did-fail-load バックオフタイマーハンドル（stale タイマーのクリア用） */
+  let siteRetryTimer: ReturnType<typeof setTimeout> | null = null
 
   // ── startPage パス（同梱 HTML / ネットワークアクセスなし §2.3） ─────────────
   const startPagePath = join(__dirname, '../renderer/start/index.html')
@@ -533,6 +584,8 @@ async function main(): Promise<void> {
    * inLocalFallback なしでは無限ループに陥る。
    */
   function loadStartPage(): void {
+    // PI4-05: バックオフ待機中の stale タイマーをクリア
+    if (siteRetryTimer !== null) { clearTimeout(siteRetryTimer); siteRetryTimer = null }
     inLocalFallback = true
     siteView.webContents.loadFile(startPagePath).catch((e: unknown) => {
       logError('siteView.startPageLoadFailed', {
@@ -627,8 +680,11 @@ async function main(): Promise<void> {
         attempt: state.attempt,
         retryDelayMs: delayMs,
       })
-      setTimeout(() => {
-        loadSiteUrl(configManager.current.siteUrl)
+      siteRetryTimer = setTimeout(() => {
+        siteRetryTimer = null
+        if (!siteView.webContents.isDestroyed()) {
+          loadSiteUrl(configManager.current.siteUrl)
+        }
       }, delayMs)
     },
   )
@@ -764,6 +820,8 @@ async function main(): Promise<void> {
   // onSiteUrlChange / onAddressBarNavigate / onAddressBarReload が複写していた
   // `siteRetryState=createRetryState(); loadSiteUrl(url)` を一本化する。
   const reloadSite = (url: string): void => {
+    // PI4-05: バックオフ待機中の stale タイマーをクリア
+    if (siteRetryTimer !== null) { clearTimeout(siteRetryTimer); siteRetryTimer = null }
     siteRetryState = createRetryState()
     loadSiteUrl(url)
   }
@@ -813,6 +871,13 @@ async function main(): Promise<void> {
   siteView.webContents.on('context-menu', openSettingsOnContextMenu)
   overlayView.webContents.on('context-menu', openSettingsOnContextMenu)
   hotspotView.webContents.on('context-menu', openSettingsOnContextMenu)
+
+  // PI4-01: siteView クラッシュ復旧
+  // TDZ対策: reloadSite は ~808 定義済み。attachCrashRecovery 結線ブロック(~708-725)時点では未定義のためここに配置。
+  siteView.webContents.on('render-process-gone', (_e, details) => {
+    logError('renderer.crashed', { view: 'site', reason: details.reason })
+    reloadSite(configManager.current.siteUrl)
+  })
 
   // ── IPC ハンドラ登録（起動時一度のみ）(T18/T20/T24 + Phase E E-7) ─────────
   // 実 ipcMain を IpcMainLike に変換してから渡す（構造的互換はあるが型シグネチャの
@@ -919,6 +984,8 @@ async function main(): Promise<void> {
 
   // ── クリーンアップ ─────────────────────────────────────────────────────
   app.on('will-quit', () => {
+    // PI4-05: 終了時に残存タイマーをクリア
+    if (siteRetryTimer !== null) { clearTimeout(siteRetryTimer); siteRetryTimer = null }
     inputCoordinator.unregisterShortcut()
     inputCoordinator.unregisterAddressBarShortcut()
     // 修正 B §B2: Ctrl+Q ショートカット解除

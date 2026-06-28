@@ -20,8 +20,30 @@ linux:
       arch:
         - x64
         - arm64
-  category: Utility
-  maintainer: ubuntuapp
+  icon: build/icon.png
+  category: AudioVideo
+  maintainer: "sawanori <snp.inc.info@gmail.com>"
+  syncDesktopName: true
+
+deb:
+  depends:
+    - libgtk-3-0
+    - libnotify4
+    - libnss3
+    - libxss1
+    - libxtst6
+    - xdg-utils
+    - libatspi2.0-0
+    - libuuid1
+    - libsecret-1-0
+    - libgbm1
+    - libasound2
+    - libcups2
+    - libdrm2
+
+electronLanguages:
+  - en-US
+  - ja
 
 # arm64 prebuilt electron は electron@35.7.5 で対応済み
 # ELECTRON_MIRROR / nativeModulesOptions は必要に応じて追加

@@ -37,6 +37,35 @@ if [[ ! -x "${APPIMAGE_PATH}" ]]; then
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
+# プリフライト検査: libfuse2
+# type-2 AppImage は libfuse.so.2 が必要。Pi OS Bookworm は既定で fuse3 のみ。
+#
+# EXTRACT_AND_RUN=1 が設定されている場合:
+#   libfuse2 チェックをスキップし、ExecStart に --appimage-extract-and-run を付与して
+#   FUSE なしで AppImage を展開・実行するモードで unit をインストールする。
+#   ※起動毎に AppImage を /tmp へ展開するため初回起動がやや遅く、追加ディスク領域を消費する。
+# ─────────────────────────────────────────────────────────────────────────────
+if [[ -z "${EXTRACT_AND_RUN:-}" ]]; then
+  if ! ldconfig -p | grep -q 'libfuse\.so\.2'; then
+    echo "エラー: libfuse2 が未導入です。" >&2
+    echo "(Pi OS Bookworm は既定で fuse3 のみ。type-2 AppImage は libfuse2 が必要です)" >&2
+    echo "" >&2
+    echo "  【推奨】 libfuse2 をインストールしてから再実行:" >&2
+    echo "    sudo apt-get install -y libfuse2" >&2
+    echo "    bash ops/install.sh ${APPIMAGE_PATH}" >&2
+    echo "" >&2
+    echo "  【FUSE 不要モード（起動毎に /tmp へ展開・やや遅い）】:" >&2
+    echo "    EXTRACT_AND_RUN=1 bash ops/install.sh ${APPIMAGE_PATH}" >&2
+    echo "    ※ install.sh が ExecStart に --appimage-extract-and-run を自動付与します。" >&2
+    echo "" >&2
+    echo "  【deb パッケージ（手動起動・開発用途向け）】:" >&2
+    echo "    sudo apt install ./ubuntuapp_*.deb" >&2
+    echo "    ※ deb は 24h 無人運用の systemd 自動起動の配線を含みません。" >&2
+    exit 1
+  fi
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
 # 変数
 # ─────────────────────────────────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -54,6 +83,12 @@ XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 # DISPLAY が未設定の場合は :0 をデフォルトに
 DISPLAY="${DISPLAY:-:0}"
 
+# XDG_SESSION_TYPE が未設定の場合は x11 をデフォルトに
+XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-x11}"
+
+# WAYLAND_DISPLAY が未設定の場合は wayland-0 をデフォルトに
+WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"
+
 # ─────────────────────────────────────────────────────────────────────────────
 # systemd --user ユニットのインストール
 # ─────────────────────────────────────────────────────────────────────────────
@@ -62,9 +97,16 @@ mkdir -p "${SYSTEMD_USER_DIR}"
 cp "${UNIT_SRC}" "${UNIT_DEST}"
 
 # ExecStart・環境変数をこの環境の値に書き換え
-sed -i "s|ExecStart=.*|ExecStart=${APPIMAGE_PATH}|" "${UNIT_DEST}"
+# EXTRACT_AND_RUN=1 の場合は --appimage-extract-and-run を付与（libfuse2 不要・起動毎展開モード）
+if [[ -n "${EXTRACT_AND_RUN:-}" ]]; then
+  sed -i "s|ExecStart=.*|ExecStart=${APPIMAGE_PATH} --appimage-extract-and-run|" "${UNIT_DEST}"
+else
+  sed -i "s|ExecStart=.*|ExecStart=${APPIMAGE_PATH}|" "${UNIT_DEST}"
+fi
 sed -i "s|Environment=DISPLAY=.*|Environment=DISPLAY=${DISPLAY}|" "${UNIT_DEST}"
 sed -i "s|Environment=XDG_RUNTIME_DIR=.*|Environment=XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR}|" "${UNIT_DEST}"
+sed -i "s|Environment=XDG_SESSION_TYPE=.*|Environment=XDG_SESSION_TYPE=${XDG_SESSION_TYPE}|" "${UNIT_DEST}"
+sed -i "s|Environment=WAYLAND_DISPLAY=.*|Environment=WAYLAND_DISPLAY=${WAYLAND_DISPLAY}|" "${UNIT_DEST}"
 
 echo "ユニットファイルを配置しました: ${UNIT_DEST}"
 
@@ -81,12 +123,14 @@ loginctl enable-linger "${USER}"
 echo "linger を有効化しました（ログアウト後も自動起動が維持されます）"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# .desktop autostart フォールバック
+# .desktop autostart のインストール（Pi OS Wayfire/labwc 正規経路）
+# XDG autostart が 'systemctl --user start signage-overlay' を実行し、
+# unit が AppImage を Restart=always 監視下で起動する（単一経路・冪等）。
+# .desktop 内の Exec は systemctl 固定なので AppImage パスへの sed は不要。
 # ─────────────────────────────────────────────────────────────────────────────
-echo "--- .desktop autostart フォールバックのインストール ---"
+echo "--- .desktop autostart のインストール ---"
 mkdir -p "${AUTOSTART_DIR}"
 cp "${DESKTOP_SRC}" "${DESKTOP_DEST}"
-sed -i "s|Exec=.*|Exec=${APPIMAGE_PATH}|" "${DESKTOP_DEST}"
 echo ".desktop ファイルを配置しました: ${DESKTOP_DEST}"
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -104,5 +148,5 @@ echo ""
 echo "ログ確認:"
 echo "  journalctl --user -u signage-overlay -f"
 echo ""
-echo "連続クラッシュ後の手動復旧:"
-echo "  systemctl --user reset-failed signage-overlay && systemctl --user start signage-overlay"
+echo "連続クラッシュ (StartLimitIntervalSec=0 で無制限リトライ中) を止めるには:"
+echo "  systemctl --user stop signage-overlay"
