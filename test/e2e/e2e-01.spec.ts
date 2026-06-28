@@ -17,12 +17,8 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { launchApp, teardownApp } from './harness/electron-launch';
+import { launchApp, teardownApp, SKIP_REASON_NO_WCV } from './harness/electron-launch';
 import type { LaunchResult } from './harness/electron-launch';
-
-const SKIP_REASON_NO_WCV =
-  'WebContentsView のページ取得不可 (§9.4)。' +
-  'WebdriverIO + wdio-electron-service への移行を検討してください (test/e2e/README.md 参照)。';
 
 test.describe('E2E-01: フル広告フロー（発火→フェード→1本→サイト復帰）', () => {
   /**

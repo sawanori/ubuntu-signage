@@ -33,16 +33,8 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { launchApp, teardownApp } from './harness/electron-launch';
+import { launchApp, teardownApp, SKIP_REASON_NO_WCV } from './harness/electron-launch';
 import type { LaunchResult } from './harness/electron-launch';
-
-// --------------------------------------------------------------------------
-// 共通定数
-// --------------------------------------------------------------------------
-
-const SKIP_REASON_NO_WCV =
-  'WebContentsView のページ取得不可 (§9.4)。' +
-  'WebdriverIO + wdio-electron-service への移行を検討してください (test/e2e/README.md 参照)。';
 
 // --------------------------------------------------------------------------
 // E2E-20-B: アドレスバー表示/非表示トグル（smoke test のみ実行）

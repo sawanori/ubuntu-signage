@@ -21,7 +21,7 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { launchApp, teardownApp } from './harness/electron-launch';
+import { launchApp, teardownApp, SKIP_REASON_NO_WCV } from './harness/electron-launch';
 import type { LaunchResult } from './harness/electron-launch';
 
 /** タップ間隔（ms）— 3 回で合計 800ms < 1500ms（時間窓） */
@@ -32,10 +32,6 @@ const TAP_INTERVAL_OUT_OF_WINDOW_MS = 1000;
 
 /** hotspot 左上隅の座標 */
 const HOTSPOT_CORNER = { x: 20, y: 20 };
-
-const SKIP_REASON_NO_WCV =
-  'WebContentsView のページ取得不可 (§9.4)。' +
-  'WebdriverIO + wdio-electron-service への移行を検討してください (test/e2e/README.md 参照)。';
 
 const SKIP_REASON_NO_HOTSPOT =
   `hotspotView の Page が識別できませんでした。${SKIP_REASON_NO_WCV}`;

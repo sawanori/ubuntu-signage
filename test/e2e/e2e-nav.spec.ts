@@ -35,6 +35,7 @@
 
 import { test, expect, _electron as electron } from '@playwright/test';
 import type { ElectronApplication, Page } from '@playwright/test';
+import { delay } from './harness/electron-launch';
 import * as http from 'http';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -383,8 +384,4 @@ test('scheme-less "localhost:PORT" submit navigates siteView to http://localhost
   expect(foundTitle).toContain('E2E-NAV-OK');
 });
 
-// ─── Utilities ───────────────────────────────────────────────────────────────
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+// delay は ./harness/electron-launch から import

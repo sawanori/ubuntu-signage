@@ -230,6 +230,14 @@ function identifyViews(pages: Page[]): ViewPages {
   return result;
 }
 
-function delay(ms: number): Promise<void> {
+/** WebContentsView のページ取得不可時の共通 skip 理由（各 spec でそのまま使用） */
+export const SKIP_REASON_NO_WCV =
+  'WebContentsView のページ取得不可 (§9.4)。' +
+  'WebdriverIO + wdio-electron-service への移行を検討してください (test/e2e/README.md 参照)。';
+
+/**
+ * 指定ミリ秒待機するユーティリティ（各 spec / テストで共通利用）。
+ */
+export function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
