@@ -1,6 +1,5 @@
 [Unit]
 Description=ubuntuapp Digital Signage Overlay
-Documentation=file:///opt/ubuntuapp/docs/DEPLOY-AND-VERIFY.md
 After=graphical-session.target
 Wants=graphical-session.target
 
@@ -15,9 +14,11 @@ Type=simple
 # 表示サーバ環境変数を明示設定
 # X11 環境では DISPLAY=:0、Wayland 環境では WAYLAND_DISPLAY=wayland-0 が有効になる
 # XDG_RUNTIME_DIR は UID 1000 の場合の既定値。別ユーザーの場合は install.sh が書き換える
+# XDG_SESSION_TYPE は x11 をプレースホルダとして設定。install.sh が実行環境の値で上書きする
 Environment=DISPLAY=:0
 Environment=WAYLAND_DISPLAY=wayland-0
 Environment=XDG_RUNTIME_DIR=/run/user/1000
+Environment=XDG_SESSION_TYPE=x11
 
 # AppImage のフルパス。install.sh が実際のパスに書き換える
 ExecStart=/opt/ubuntuapp/ubuntuapp.AppImage

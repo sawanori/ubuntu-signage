@@ -54,6 +54,12 @@ XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 # DISPLAY が未設定の場合は :0 をデフォルトに
 DISPLAY="${DISPLAY:-:0}"
 
+# XDG_SESSION_TYPE が未設定の場合は x11 をデフォルトに
+XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-x11}"
+
+# WAYLAND_DISPLAY が未設定の場合は wayland-0 をデフォルトに
+WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"
+
 # ─────────────────────────────────────────────────────────────────────────────
 # systemd --user ユニットのインストール
 # ─────────────────────────────────────────────────────────────────────────────
@@ -65,6 +71,8 @@ cp "${UNIT_SRC}" "${UNIT_DEST}"
 sed -i "s|ExecStart=.*|ExecStart=${APPIMAGE_PATH}|" "${UNIT_DEST}"
 sed -i "s|Environment=DISPLAY=.*|Environment=DISPLAY=${DISPLAY}|" "${UNIT_DEST}"
 sed -i "s|Environment=XDG_RUNTIME_DIR=.*|Environment=XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR}|" "${UNIT_DEST}"
+sed -i "s|Environment=XDG_SESSION_TYPE=.*|Environment=XDG_SESSION_TYPE=${XDG_SESSION_TYPE}|" "${UNIT_DEST}"
+sed -i "s|Environment=WAYLAND_DISPLAY=.*|Environment=WAYLAND_DISPLAY=${WAYLAND_DISPLAY}|" "${UNIT_DEST}"
 
 echo "ユニットファイルを配置しました: ${UNIT_DEST}"
 
