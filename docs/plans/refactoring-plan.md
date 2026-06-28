@@ -236,3 +236,76 @@ npx playwright test test/e2e/quit-flow.spec.ts
 ### 実行ゲート（次セッションの再開手順）
 ユーザー承認 → 計画に R1/R2/R6 を反映 → sonnet 実装（§6 推奨順・各項目後に typecheck+lint+全テスト緑維持）→ 各テーマ完了時に Opus 品質ゲート。
 **現状: 実装は未着手。ユーザー承認＋ J1/J2 の判断＋ §5 から included したい項目の有無を待っている段階。**
+
+---
+
+## 9. 実行確定事項（2026-06-28 ユーザー承認・本セクションが§8の保留項目を上書きする）
+
+> 本セクションは §8「判断保留（ユーザー確認待ち）」「🔴 CRITICAL」「🛟 安全策」の各項目に対するユーザー最終決定を記録する。§1〜§8 の本文は改変しない。以降の実装はここに記載した確定事項を正として進める。
+
+### 9-1. 全体方針（確定）
+
+| 項目 | 決定内容 |
+|------|---------|
+| 実行可否 | リファクタリング実行を **承認・着手する** |
+| リポジトリ管理 | GitHub（`git@github.com:sawanori/ubuntu-signage.git`）管理下で作業ブランチ `refactor/internal-quality` を使用 |
+| コミット粒度 | **1項目 = 1コミット**（R6 充足） |
+
+---
+
+### 9-2. CRITICAL修正の反映（確定）
+
+#### R1 — C1/C2/C3/C4 の型移設先の是正
+
+renderer が preload ファイルから型を cross-import すると renderer tsconfig が `import ... from 'electron'` を巻き込み typecheck を壊すため、共有 API 型・ペイロード型は **新規 `src/shared/` モジュール**（例: `src/shared/window-api.ts`）へ移設し、preload と renderer の双方がそこから `import type` する。
+
+| サブ項目 | 対応方針 |
+|---------|---------|
+| **C1** | `src/preload/settings.ts` の `updateConfig` 注釈を `(patch: Partial<Config>): Promise<Config \| null>` に是正（実体に一致）。単独で実施可。 |
+| **C2** | 各 `XxxApi`（overlay / settings / hotspot / addressbar）interface を `src/shared/` に単一定義し、preload の contextBridge object に注釈、renderer の `declare global Window` 拡張も同じ shared 型を `import type` で再利用。 |
+| **C3** | `NavigateResult` も `src/shared/` に置き、preload と renderer 双方がそこから import（renderer 側の再宣言を排除）。`config?` フィールドは将来契約のため型は残す。 |
+| **C4** | `SchedulerState` は既に `src/shared/types.ts` に定義済みのため、`renderer/settings/settings-controller.ts` はそこから `import type` するだけ（移設不要）。 |
+
+#### R2 — D2 の検証方法の是正
+
+§8 計画では「quit-flow e2e で assert する」としていたが、`quit-flow.spec.ts` は実際には assert せず test.fixme コメントのみで安全網が機能しない。下記に変更する。
+
+- **代替検証**: `logWarn` の出力 JSON 文字列が従来の手書き JSON 文字列とバイト等価であることを assert する **専用ユニットテストを新設**して担保する（実 stdout キャプチャ比較でも可）。
+- `logWarn` 出力 `{level, event, ...meta, ts}` がキー順含めバイト等価であることは確認済み。
+
+---
+
+### 9-3. 判断保留の確定
+
+| 保留ID | 確定内容 |
+|--------|---------|
+| **J1** | **在スコープ維持（確定）**: D1（`video.play()` に `.catch(console.error)` 付与）を本パスで実施する。正常系の観測出力は不変、現状無音の異常系にのみ診断ログを出す。 |
+| **J2** | **削除確定**: B3（e2e-20.spec.ts の ~960 行 fixme 本体）は describe 骨格 + 唯一実行される smoke test のみ残し、未実装シナリオは簡潔なチェックリスト/コメント化して削除する。実行テスト集合は不変。 |
+| **J3** | **在スコープ維持（確定）**: A8/A9（DOM 要素欠落時のラベル付き即時エラー・data-minutes 解釈統一）を本パスで実施する。正常系は不変、現状無音の異常系にのみ診断を出す。 |
+| **J4** | **確定**: E2（tsconfig base 化）の parity 証明は型診断 diff に加え、**`tsc --showConfig` の実効オプション diff** で行う。子 config で `lib` / `types` / `module` / `moduleResolution` / `allowImportingTsExtensions` / `isolatedModules` / `esModuleInterop` 等の差分を再宣言する。 |
+
+---
+
+### 9-4. §5（スコープ外）からの取り込み（確定）
+
+以下の §5 項目を本パスに取り込む（「推奨する方法」を採用）:
+
+| 項目ID | 確定内容 |
+|--------|---------|
+| **O8** | **実施**: vitest 設定を `passWithNoTests: false` 化（テスト 0 件マッチ時に green → fail。サイレント障害対策）。 |
+| **O9** | **実施**: lint 対象 glob を `test/` ディレクトリへ拡大。既存違反が出た場合は最小修正 or ルール ratchet で緑化する（churn は最小限に）。 |
+| **O3** | **推奨方法を実施（削除しない）**: 既定セッションの `media://` ハンドラ（index.ts 271 付近）は **削除せず**、§5 記載の「defensive no-op コメント付与」（ゼロリスクの無害な代替）を実施する。セキュリティ隣接のため独断削除は回避。 |
+
+上記以外の §5 項目（O1 / O2 / O4 / O5 / O6 / O7 / O10 / O11 / O12 / O13）は **§5 のまま保留**（今回は実施しない）。
+
+---
+
+### 9-5. §6 実行順序への反映（追記）
+
+新規追加分（O3 / O8 / O9）の実行位置を明記する:
+
+| 追加項目 | 実行タイミング |
+|---------|--------------|
+| **O8 / O9**（ツール設定） | §6 ステップ 1（コメント/ドキュメント是正）の直後。独立性が高いので早めに実施してよい。ただし O9 で `test/` 配下の lint 違反が出る場合があるため、テスト足場集約（A10〜A13 / ステップ 6）の前に一度走らせる。 |
+| **O3**（defensive コメント） | A3（handleMedia 統合）と同じ index.ts 編集フェーズ（ステップ 4）で同時に扱う。 |
+| **D2 の検証**（R2 反映） | D2 実施後、e2e quit-flow 依存ではなく専用ユニットテストで stdout キャプチャ比較を行う（§6 ステップ 5 の注記として反映）。 |
