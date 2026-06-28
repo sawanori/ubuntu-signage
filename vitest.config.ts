@@ -5,8 +5,8 @@ export default defineConfig({
     // Node環境で実行（Main プロセスのロジックをテスト）
     environment: 'node',
     globals: true,
-    // テストファイルが存在しなくても CI を通す（Phase 2+ でテスト追加予定）
-    passWithNoTests: true,
+    // テストが 0 件の場合は CI を fail にする（サイレント障害対策）
+    passWithNoTests: false,
     // E2E テストは Playwright ランナーで別管理 — Vitest の対象から明示的に除外する
     exclude: ['test/e2e/**', 'node_modules/**'],
     // fake timers は各テストで vi.useFakeTimers() を呼ぶ
