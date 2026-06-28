@@ -856,6 +856,13 @@ async function main(): Promise<void> {
   overlayView.webContents.on('context-menu', openSettingsOnContextMenu)
   hotspotView.webContents.on('context-menu', openSettingsOnContextMenu)
 
+  // PI4-01: siteView クラッシュ復旧
+  // TDZ対策: reloadSite は ~808 定義済み。attachCrashRecovery 結線ブロック(~708-725)時点では未定義のためここに配置。
+  siteView.webContents.on('render-process-gone', (_e, details) => {
+    logError('renderer.crashed', { view: 'site', reason: details.reason })
+    reloadSite(configManager.current.siteUrl)
+  })
+
   // ── IPC ハンドラ登録（起動時一度のみ）(T18/T20/T24 + Phase E E-7) ─────────
   // 実 ipcMain を IpcMainLike に変換してから渡す（構造的互換はあるが型シグネチャの
   // 差異を避けるため unknown を経由してキャスト）
