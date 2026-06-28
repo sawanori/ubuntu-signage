@@ -569,6 +569,8 @@ async function main(): Promise<void> {
   // failedSinceStart フラグにより、Chromium のエラーページ finish で
   // リトライカウンタがリセットされるバグを防ぐ。
   let siteRetryState = createRetryState()
+  /** PI4-05: did-fail-load バックオフタイマーハンドル（stale タイマーのクリア用） */
+  let siteRetryTimer: ReturnType<typeof setTimeout> | null = null
 
   // ── startPage パス（同梱 HTML / ネットワークアクセスなし §2.3） ─────────────
   const startPagePath = join(__dirname, '../renderer/start/index.html')
@@ -582,6 +584,8 @@ async function main(): Promise<void> {
    * inLocalFallback なしでは無限ループに陥る。
    */
   function loadStartPage(): void {
+    // PI4-05: バックオフ待機中の stale タイマーをクリア
+    if (siteRetryTimer !== null) { clearTimeout(siteRetryTimer); siteRetryTimer = null }
     inLocalFallback = true
     siteView.webContents.loadFile(startPagePath).catch((e: unknown) => {
       logError('siteView.startPageLoadFailed', {
@@ -676,8 +680,11 @@ async function main(): Promise<void> {
         attempt: state.attempt,
         retryDelayMs: delayMs,
       })
-      setTimeout(() => {
-        loadSiteUrl(configManager.current.siteUrl)
+      siteRetryTimer = setTimeout(() => {
+        siteRetryTimer = null
+        if (!siteView.webContents.isDestroyed()) {
+          loadSiteUrl(configManager.current.siteUrl)
+        }
       }, delayMs)
     },
   )
@@ -813,6 +820,8 @@ async function main(): Promise<void> {
   // onSiteUrlChange / onAddressBarNavigate / onAddressBarReload が複写していた
   // `siteRetryState=createRetryState(); loadSiteUrl(url)` を一本化する。
   const reloadSite = (url: string): void => {
+    // PI4-05: バックオフ待機中の stale タイマーをクリア
+    if (siteRetryTimer !== null) { clearTimeout(siteRetryTimer); siteRetryTimer = null }
     siteRetryState = createRetryState()
     loadSiteUrl(url)
   }
@@ -975,6 +984,8 @@ async function main(): Promise<void> {
 
   // ── クリーンアップ ─────────────────────────────────────────────────────
   app.on('will-quit', () => {
+    // PI4-05: 終了時に残存タイマーをクリア
+    if (siteRetryTimer !== null) { clearTimeout(siteRetryTimer); siteRetryTimer = null }
     inputCoordinator.unregisterShortcut()
     inputCoordinator.unregisterAddressBarShortcut()
     // 修正 B §B2: Ctrl+Q ショートカット解除
