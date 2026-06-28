@@ -357,9 +357,9 @@ journalctl --user -u signage-overlay -f
 # 起動以降の全ログ
 journalctl --user -u signage-overlay --since "today"
 
-# 連続クラッシュで start-limit に達した後の手動復旧
-systemctl --user reset-failed signage-overlay
-systemctl --user start signage-overlay
+# StartLimitIntervalSec=0 に変更済みのため start-limit による自動停止は発生しない
+# アプリが起動できない状態（設定ミス等）の場合は手動停止すること:
+systemctl --user stop signage-overlay
 ```
 
 ### 5.5 ユニットファイルのパラメータ説明
@@ -372,8 +372,7 @@ systemctl --user start signage-overlay
 | `WantedBy=graphical-session.target` | — | グラフィカルセッション起動時に自動起動 |
 | `Restart=always` | — | 終了理由を問わず再起動 |
 | `RestartSec=5` | 5 秒 | 再起動までの待機時間 |
-| `StartLimitIntervalSec=60` | 60 秒 | 連続クラッシュ判定ウィンドウ |
-| `StartLimitBurst=5` | 5 回 | この回数を超えると起動停止 |
+| `StartLimitIntervalSec=0` | 無制限 | 連続クラッシュ上限なし。24h 無人運用向けに無制限リトライに設定済み |
 | `Environment=DISPLAY=:0` | `:0` | X11 ディスプレイ番号 (Wayland 不使用時も設定) |
 | `Environment=WAYLAND_DISPLAY=wayland-0` | `wayland-0` | Wayland ソケット名 |
 | `Environment=XDG_RUNTIME_DIR=/run/user/1000` | UID=1000 の場合 | 実行ユーザーの UID で書き換え |
@@ -669,16 +668,19 @@ journalctl --user -u signage-overlay --since "24 hours ago" | grep -E "ERROR|WAR
 systemctl --user status signage-overlay
 ```
 
-**連続クラッシュ (start-limit) の確認:**
-1. 60 秒以内に 6 回クラッシュさせる (start-limit 超過テスト)
-2. journald で start-limit に達したことを確認する
+**連続クラッシュ後の自動復帰確認:**
+`StartLimitIntervalSec=0` に設定済みのため、連続クラッシュ後も `RestartSec=5` 秒ごとに
+自動リトライを継続します (start-limit による永久停止は発生しません)。
+
+1. アプリのプロセスを `kill -9` で 5 回連続強制終了する
+2. journald でクラッシュ後も 5 秒ごとに再起動が続いていることを確認する
 
 ```bash
 # 実機で要実行
-journalctl --user -u signage-overlay | grep -E "Start request repeated|start-limit"
-# 手動復旧
-systemctl --user reset-failed signage-overlay
-systemctl --user start signage-overlay
+journalctl --user -u signage-overlay -f
+# ↑ 連続クラッシュ後も "Started ubuntuapp Digital Signage Overlay" が繰り返し出ることを確認
+# 恒久障害時（設定ミス等）で無限再起動を止めたい場合:
+systemctl --user stop signage-overlay
 ```
 
 ---

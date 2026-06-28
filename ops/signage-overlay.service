@@ -3,10 +3,10 @@ Description=ubuntuapp Digital Signage Overlay
 After=graphical-session.target
 Wants=graphical-session.target
 
-# 60 秒以内に 5 回を超えてクラッシュした場合は起動を停止する
-# 復旧: systemctl --user reset-failed signage-overlay && systemctl --user start signage-overlay
-StartLimitIntervalSec=60
-StartLimitBurst=5
+# StartLimitIntervalSec=0 で連続クラッシュ後も無制限にリトライする（24h 無人運用向け）
+# 副作用: 恒久障害（設定ミス等）では 5 秒間隔で無限再起動し続けログが増加し続ける。
+# その場合は手動停止: systemctl --user stop signage-overlay
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple
