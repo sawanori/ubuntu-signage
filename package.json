@@ -13,7 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "xvfb-run -a playwright test",
-    "build:linux-arm64": "electron-builder --linux --arm64",
+    "build:linux-arm64": "electron-vite build && electron-builder --linux --arm64",
     "build:linux-x64": "electron-builder --linux --x64"
   },
   "dependencies": {
