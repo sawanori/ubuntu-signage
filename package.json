@@ -2,6 +2,14 @@
   "name": "ubuntuapp",
   "version": "0.1.0",
   "description": "Digital signage video overlay application",
+  "author": "sawanori",
+  "license": "UNLICENSED",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sawanori/ubuntu-signage"
+  },
+  "homepage": "https://github.com/sawanori/ubuntu-signage",
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",

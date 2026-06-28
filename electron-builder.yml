@@ -22,7 +22,7 @@ linux:
         - arm64
   icon: build/icon.png
   category: Utility
-  maintainer: ubuntuapp
+  maintainer: "sawanori <snp.inc.info@gmail.com>"
 
 deb:
   depends:
