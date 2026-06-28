@@ -35,6 +35,7 @@ export const DEFAULT_CONFIG: Config = {
   videoFolderPath: '',
   intervalMinutes: 5,
   loopEnabled: true,
+  /** 現状未配線（CSS は 2000ms 固定、styles.css 参照）。本フィールドはランタイム未読込 */
   fadeDurationMs: 1000,
 } as const satisfies Config
 

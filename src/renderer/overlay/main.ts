@@ -184,7 +184,7 @@ function setVisible(visible: boolean): void {
 }
 
 /**
- * CSS opacity 0→1 フェードイン（≈1000ms）。
+ * CSS opacity 0→1 フェードイン（2000ms、styles.css の transition: opacity 2000ms 参照）。
  * transitionend 受信後に onComplete を呼ぶ。
  *
  * 視覚確認は E2E / [M] に委ねる（UO-06）。
@@ -196,12 +196,12 @@ function triggerFadeIn(onComplete: () => void): void {
     onComplete()
   }
   container.addEventListener('transitionend', handleEnd)
-  // opacity を 1 にセット → CSS transition: opacity 1000ms ease-in-out が発火
+  // opacity を 1 にセット → CSS transition: opacity 2000ms ease-in-out が発火（styles.css 参照）
   container.style.opacity = '1'
 }
 
 /**
- * CSS opacity 1→0 フェードアウト（≈1000ms）。
+ * CSS opacity 1→0 フェードアウト（2000ms、styles.css の transition: opacity 2000ms 参照）。
  * transitionend 受信後に onComplete を呼ぶ。
  *
  * 視覚確認は E2E / [M] に委ねる（UO-06）。
@@ -213,7 +213,7 @@ function triggerFadeOut(onComplete: () => void): void {
     onComplete()
   }
   container.addEventListener('transitionend', handleEnd)
-  // opacity を 0 にセット → CSS transition: opacity 1000ms ease-in-out が発火
+  // opacity を 0 にセット → CSS transition: opacity 2000ms ease-in-out が発火（styles.css 参照）
   container.style.opacity = '0'
 }
 
