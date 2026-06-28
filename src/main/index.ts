@@ -770,6 +770,17 @@ async function main(): Promise<void> {
     logger: schedulerLogger,
   })
 
+  // ── siteView 再ロード共通ヘルパー ──────────────────────────────────────────
+  // onSiteUrlChange / onAddressBarNavigate / onAddressBarReload が複写していた
+  // `siteRetryState=createRetryState(); loadSiteUrl(url)` を一本化する。
+  const reloadSite = (url: string): void => {
+    siteRetryState = createRetryState()
+    loadSiteUrl(url)
+  }
+  // onToggleAddressBar が InputCoordinator と registerHandlers の両箇所で
+  // 同一定義されていた `setToolbarVisible(!toolbarVisible)` を一本化する。
+  const toggleAddressBar = (): void => setToolbarVisible(!toolbarVisible)
+
   // ── InputCoordinator (Ctrl+G / Ctrl+L / hotspot:tap) (T21/T22 + Phase E E-8) ──
   // hotspot:tap は ipc.ts で受信し InputCoordinator.recordTap() を呼ぶ。
   // 3 回カウント・トグルロジックは InputCoordinator が担う（UH-03/Wayland 対応）。
@@ -792,9 +803,7 @@ async function main(): Promise<void> {
     },
     isWayland,
     // E-8: Ctrl+L / 上部中央ゾーンタップ → アドレスバートグル
-    onToggleAddressBar: () => {
-      setToolbarVisible(!toolbarVisible)
-    },
+    onToggleAddressBar: toggleAddressBar,
     // Ctrl+Q → 即終了（確認なし・描画状態に無依存）
     // 旧: quitCoordinator.requestQuit()（2段確認）→ 新: app.quit() 直呼び
     onQuit: () => app.quit(),
@@ -837,10 +846,7 @@ async function main(): Promise<void> {
     },
     // T32-UI: siteUrl 変更時の siteView 再ロード（settings:update 経路）
     // 新しい URL へ切り替えるためリトライ状態をリセットしてから読み込む
-    onSiteUrlChange: (url: string): void => {
-      siteRetryState = createRetryState()
-      loadSiteUrl(url)
-    },
+    onSiteUrlChange: reloadSite,
     // settings:close IPC 受信時にパネルを閉じる（sender 検証は ipc.ts 側で実施済み）
     onCloseSettings: closeSettings,
     // hotspot:tap IPC（隅タップ 1 回）を InputCoordinator に渡してカウント・トグルを担わせる
@@ -848,19 +854,11 @@ async function main(): Promise<void> {
     // E-7: addressbar View の WebContents（config 変更の broadcast 先）
     addressBarWebContents: addressBarView.webContents as WebContentsLike,
     // E-7: addressbar:navigate 受信後の siteView 再ロード
-    onAddressBarNavigate: (url: string): void => {
-      siteRetryState = createRetryState()
-      loadSiteUrl(url)
-    },
+    onAddressBarNavigate: reloadSite,
     // E-7 / E-8: アドレスバートグル（Ctrl+L / 上部中央ゾーンタップ → hotspot:address-bar-toggle）
-    onToggleAddressBar: () => {
-      setToolbarVisible(!toolbarVisible)
-    },
+    onToggleAddressBar: toggleAddressBar,
     // E-7: addressbar:reload 受信後の siteView 再ロード
-    onAddressBarReload: () => {
-      siteRetryState = createRetryState()
-      loadSiteUrl(configManager.current.siteUrl)
-    },
+    onAddressBarReload: () => reloadSite(configManager.current.siteUrl),
     // 修正 B §B2: app:request-quit 受信 → QuitCoordinator.requestQuit()
     onRequestQuit: () => quitCoordinator.requestQuit(),
     // 修正 B §B2: settings renderer の WebContents id（C2 二層 sender 検証）
