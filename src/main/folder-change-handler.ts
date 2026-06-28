@@ -18,14 +18,17 @@ import type { PlaylistManager } from './playlist'
 /**
  * 動画フォルダを newPath に動的切替する。
  *
+ * パラメータ型は実際に呼ぶメソッドのみを要求する Pick 型（C6）。
+ * 呼び出し元は Watcher / PlaylistManager フルインスタンスを渡せる（構造的部分型で互換）。
+ *
  * @param newPath - 新しい動画フォルダの絶対パス（空文字列 = フォルダ未選択）
- * @param watcher - Watcher インスタンス
- * @param playlist - PlaylistManager インスタンス
+ * @param watcher - stop / start メソッドを持つオブジェクト
+ * @param playlist - resetCursor メソッドを持つオブジェクト
  */
 export async function applyFolderChange(
   newPath: string,
-  watcher: Watcher,
-  playlist: PlaylistManager,
+  watcher: Pick<Watcher, 'stop' | 'start'>,
+  playlist: Pick<PlaylistManager, 'resetCursor'>,
 ): Promise<void> {
   await watcher.stop()
   playlist.resetCursor()

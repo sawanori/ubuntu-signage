@@ -15,15 +15,14 @@ import type { Watcher } from '../../src/main/watcher'
 import type { PlaylistManager } from '../../src/main/playlist'
 
 // ─── モック型 ────────────────────────────────────────────────────────────────
+//
+// Pick<T, keys> でテストが使うメソッドのみを型付けすることで、
+// production 側のメソッド名変更・追加をコンパイル時に検出できる（C6）。
+// applyFolderChange の引数型が Pick<Watcher,...> / Pick<PlaylistManager,...> のため
+// キャストなしで直接渡せる。
 
-type WatcherMock = {
-  stop: ReturnType<typeof vi.fn<[], Promise<void>>>
-  start: ReturnType<typeof vi.fn<[string], Promise<void>>>
-}
-
-type PlaylistMock = {
-  resetCursor: ReturnType<typeof vi.fn<[], void>>
-}
+type WatcherMock = Pick<Watcher, 'stop' | 'start'>
+type PlaylistMock = Pick<PlaylistManager, 'resetCursor'>
 
 // ─── テストスイート ───────────────────────────────────────────────────────────
 
@@ -52,8 +51,8 @@ describe('applyFolderChange (T32-BE)', () => {
   it('UC-07-1: 正常パス — stop → resetCursor → start の順に呼ばれる', async () => {
     await applyFolderChange(
       '/videos/new',
-      watcher as unknown as Watcher,
-      playlist as unknown as PlaylistManager,
+      watcher,
+      playlist,
     )
 
     expect(callOrder).toEqual(['stop', 'resetCursor', 'start'])
@@ -63,8 +62,8 @@ describe('applyFolderChange (T32-BE)', () => {
     const newPath = '/videos/campaign-2026'
     await applyFolderChange(
       newPath,
-      watcher as unknown as Watcher,
-      playlist as unknown as PlaylistManager,
+      watcher,
+      playlist,
     )
 
     expect(watcher.start).toHaveBeenCalledOnce()
@@ -74,8 +73,8 @@ describe('applyFolderChange (T32-BE)', () => {
   it('UC-07-3: 空パス — stop と resetCursor は呼ばれるが start は呼ばれない', async () => {
     await applyFolderChange(
       '',
-      watcher as unknown as Watcher,
-      playlist as unknown as PlaylistManager,
+      watcher,
+      playlist,
     )
 
     expect(watcher.stop).toHaveBeenCalledOnce()
@@ -105,8 +104,8 @@ describe('applyFolderChange (T32-BE)', () => {
 
     await applyFolderChange(
       '/path',
-      watcher as unknown as Watcher,
-      playlist as unknown as PlaylistManager,
+      watcher,
+      playlist,
     )
 
     expect(asyncOrder).toEqual(['stop-done', 'resetCursor', 'start'])
@@ -120,8 +119,8 @@ describe('applyFolderChange (T32-BE)', () => {
     await expect(
       applyFolderChange(
         '/path',
-        watcher as unknown as Watcher,
-        playlist as unknown as PlaylistManager,
+        watcher,
+        playlist,
       ),
     ).rejects.toThrow('stop failed')
 
@@ -138,8 +137,8 @@ describe('applyFolderChange (T32-BE)', () => {
     await expect(
       applyFolderChange(
         '/path',
-        watcher as unknown as Watcher,
-        playlist as unknown as PlaylistManager,
+        watcher,
+        playlist,
       ),
     ).rejects.toThrow('start failed')
 
