@@ -39,9 +39,9 @@ Raspberry Pi 4 向けの Electron 製デジタルサイネージアプリ。
 | 項目 | 要件 |
 |------|------|
 | ハードウェア | Raspberry Pi 4 Model B (4GB 以上推奨) |
-| OS | Raspberry Pi OS 64bit (Bookworm 相当) |
-| アーキテクチャ | arm64 (aarch64) |
-| libfuse2 | **必須** (Pi OS Bookworm は既定で fuse3 のみ。`sudo apt-get install -y libfuse2` で導入) |
+| OS | **Ubuntu Desktop 24.04**（Pi4: arm64 / x86 機: amd64） |
+| アーキテクチャ | Pi4: arm64 (aarch64) / x86 機: amd64 |
+| libfuse2 | deb 経路では**不要**。AppImage 経路（無人 kiosk 運用）では `sudo apt-get install -y libfuse2` |
 | Node.js | v20 LTS 以上 (ビルド機のみ。Pi4 での Node.js インストール不要) |
 
 ---
@@ -69,13 +69,15 @@ release/
 
 ---
 
-## デプロイ
+## デプロイ（AppImage 経路・無人 kiosk 運用向け）
+
+> **手動運用の場合は「クイックスタート」セクションを参照してください。** 以下は AppImage + systemd による 24h 無人 kiosk 運用向けの手順です。
 
 ```bash
 # 1. AppImage を Pi4 へ転送
 scp release/ubuntuapp-0.1.0-arm64.AppImage pi@raspberrypi.local:~/
 
-# 2. Pi4 で libfuse2 をインストール (Bookworm 初回のみ)
+# 2. Pi4 で libfuse2 をインストール (Ubuntu・AppImage 経路・初回のみ)
 ssh pi@raspberrypi.local "sudo apt-get install -y libfuse2"
 
 # 3. install.sh でシステムに登録（プリフライト検査・systemd unit 有効化・XDG autostart 設置）
