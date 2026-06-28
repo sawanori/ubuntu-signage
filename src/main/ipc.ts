@@ -395,7 +395,7 @@ export function registerHandlers(deps: RegisterHandlersDeps): void {
 
   /**
    * hotspot:address-bar-toggle — 上部中央ゾーン単一タップ通知（Wayland フォールバック）。
-   * onToggleAddressBar コールバック（InputCoordinator.toggleAddressBarZone()）へ委譲する。
+   * deps.onToggleAddressBar へ委譲する（index.ts が setToolbarVisible に配線）。
    */
   ipcMain.on('hotspot:address-bar-toggle', (event) => {
     if (!validateSender(event, 'hotspot', 'hotspot:address-bar-toggle', logger)) return
