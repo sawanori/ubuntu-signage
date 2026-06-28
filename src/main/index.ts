@@ -77,6 +77,7 @@ if (!gotLock) {
 // ─── WSL GPU 無効化判定 (修正 A: §A-2) ────────────────────────────────────────
 // /proc/version を読み取り WSL 環境かどうかを判定する。
 // 読み取り失敗時（Linux 以外・権限なし等）は null を渡して false 扱いにする。
+let _gpuProcVersion: string | null = null
 {
   let procVersion: string | null = null
   try {
@@ -86,6 +87,7 @@ if (!gotLock) {
     // logWarn は巻き上げ関数宣言のため、この位置から呼び出し可能
     logWarn('gpu.procVersionReadFailed')
   }
+  _gpuProcVersion = procVersion
   const gpuParams = { env: process.env as Record<string, string | undefined>, procVersion }
   if (shouldDisableGpu(gpuParams)) {
     const phase = gpuFallbackPhase(gpuParams.env)
@@ -101,6 +103,27 @@ if (!gotLock) {
       app.commandLine.appendSwitch(sw.name, sw.value)
     }
     logWarn('gpu.hardwareAccelerationDisabled', { phase, hardwareAccelerationDisabled, gpuSwitches })
+  }
+}
+
+// ─── VA-API HW デコード有効化 — 実機のみ、WSL では無効 (#4) ────────────────────
+// shouldDisableGpu が false（= 実ハードウェア）の場合のみ VaapiVideoDecoder を有効化する。
+// WSL/開発環境では GPU が使えないため追加しない。
+// app.whenReady() より前に呼ぶ必要がある。
+{
+  const _gpuParams = {
+    env: process.env as Record<string, string | undefined>,
+    procVersion: _gpuProcVersion,
+  }
+  if (!shouldDisableGpu(_gpuParams)) {
+    // enable-features が既存スイッチと重複しないようにコンマ連結
+    const existing = app.commandLine.getSwitchValue('enable-features')
+    const newValue =
+      existing !== '' && existing !== undefined
+        ? `${existing},VaapiVideoDecoder`
+        : 'VaapiVideoDecoder'
+    app.commandLine.appendSwitch('enable-features', newValue)
+    logWarn('gpu.vaapiVideoDecoderEnabled', { event: 'gpu.vaapiVideoDecoderEnabled', enableFeatures: newValue })
   }
 }
 
