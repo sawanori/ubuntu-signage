@@ -20,6 +20,7 @@ linux:
       arch:
         - x64
         - arm64
+  icon: build/icon.png
   category: Utility
   maintainer: ubuntuapp
 
