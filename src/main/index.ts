@@ -241,7 +241,14 @@ app.on('second-instance', (_event, _argv, _workingDirectory, _additionalData) =>
 
 // ─── アプリライフサイクル ─────────────────────────────────────────────────────
 app.whenReady().then(() => {
-  void main()
+  main().catch((e: unknown) => {
+    logError('main.initFailed', {
+      reason: e instanceof Error ? e.message : String(e),
+      stack: e instanceof Error ? (e.stack ?? '') : '',
+    })
+    app.relaunch()
+    app.quit()
+  })
 })
 
 app.on('window-all-closed', () => {
