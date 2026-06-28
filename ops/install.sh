@@ -103,12 +103,14 @@ loginctl enable-linger "${USER}"
 echo "linger を有効化しました（ログアウト後も自動起動が維持されます）"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# .desktop autostart フォールバック
+# .desktop autostart のインストール（Pi OS Wayfire/labwc 正規経路）
+# XDG autostart が 'systemctl --user start signage-overlay' を実行し、
+# unit が AppImage を Restart=always 監視下で起動する（単一経路・冪等）。
+# .desktop 内の Exec は systemctl 固定なので AppImage パスへの sed は不要。
 # ─────────────────────────────────────────────────────────────────────────────
-echo "--- .desktop autostart フォールバックのインストール ---"
+echo "--- .desktop autostart のインストール ---"
 mkdir -p "${AUTOSTART_DIR}"
 cp "${DESKTOP_SRC}" "${DESKTOP_DEST}"
-sed -i "s|Exec=.*|Exec=${APPIMAGE_PATH}|" "${DESKTOP_DEST}"
 echo ".desktop ファイルを配置しました: ${DESKTOP_DEST}"
 
 # ─────────────────────────────────────────────────────────────────────────────

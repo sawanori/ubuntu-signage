@@ -303,7 +303,24 @@ bash ops/install.sh /home/pi/ubuntuapp-0.1.0-arm64.AppImage
 2. `ExecStart`・`DISPLAY`・`XDG_RUNTIME_DIR` を実行環境の値に書き換え
 3. `systemctl --user daemon-reload && enable`
 4. `loginctl enable-linger $USER` でログアウト後の自動起動を有効化
-5. `ops/signage-overlay.desktop` を `~/.config/autostart/` へコピー (フォールバック)
+5. `ops/signage-overlay.desktop` を `~/.config/autostart/` へコピー
+
+**自動起動経路について (Pi OS Wayfire/labwc)**
+
+Pi OS 既定セッション (wayfire/labwc) は `graphical-session.target` を起動しない場合があるため、
+`WantedBy=graphical-session.target` の user unit が boot で発火しないことがあります。
+
+そのため、本構成では **XDG autostart (.desktop) が正規の起動経路**となります:
+
+```
+boot → 自動ログイン → XDG autostart → signage-overlay.desktop
+          → systemctl --user start signage-overlay
+              → signage-overlay.service が AppImage を Restart=always 監視下で起動
+```
+
+- `.desktop` の `Exec=systemctl --user start signage-overlay` は冪等 (すでに起動中なら無害)
+- AppImage の Restart/StartLimit 監視は unit が一元管理
+- シングルインスタンスガード (`app.requestSingleInstanceLock()`) が二重起動を防止
 
 ### 5.3 手動インストール手順
 
@@ -330,11 +347,10 @@ systemctl --user enable signage-overlay
 # 5. ログアウト後も動作させるために linger を有効化
 loginctl enable-linger $USER
 
-# 6. .desktop autostart フォールバック
+# 6. .desktop autostart (Pi OS 正規経路)
+# Exec は "systemctl --user start signage-overlay" 固定なのでパス書換不要
 mkdir -p ~/.config/autostart/
 cp ops/signage-overlay.desktop ~/.config/autostart/
-sed -i "s|Exec=.*|Exec=/home/pi/ubuntuapp-0.1.0-arm64.AppImage|" \
-  ~/.config/autostart/signage-overlay.desktop
 ```
 
 ### 5.4 起動・停止・ログ確認

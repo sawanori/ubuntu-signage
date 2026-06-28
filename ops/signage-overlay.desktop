@@ -1,10 +1,15 @@
 [Desktop Entry]
 Type=Application
 Name=Signage Overlay
-Comment=Digital Signage Video Overlay (autostart fallback)
-# AppImage のフルパス。install.sh が実際のパスに書き換える
-Exec=/opt/ubuntuapp/ubuntuapp.AppImage
+Comment=Digital Signage Video Overlay
+# XDG autostart が systemd user unit を起動する。unit が AppImage を Restart=always で監視する。
+# これにより .desktop と systemd の二重起動を防ぎ、単一の監視経路に統一する。
+Exec=systemctl --user start signage-overlay
+Icon=ubuntuapp
+Categories=AudioVideo;
+StartupWMClass=ubuntuapp
+Terminal=false
 Hidden=false
 NoDisplay=false
 X-GNOME-Autostart-enabled=true
-X-GNOME-Autostart-Delay=5
+X-GNOME-Autostart-Delay=3
