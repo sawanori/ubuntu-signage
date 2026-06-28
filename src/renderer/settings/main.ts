@@ -35,6 +35,7 @@ import {
 } from './settings-controller'
 import type { Config } from '../../shared/types'
 import type { SettingsWindowApi } from '../../shared/window-api'
+import { getEl } from '../shared/dom-utils'
 
 // ─── window.settingsApi 型宣言 ────────────────────────────────────────────────
 //
@@ -46,17 +47,6 @@ declare global {
   interface Window {
     settingsApi: SettingsWindowApi
   }
-}
-
-// ─── DOM 取得ヘルパー ─────────────────────────────────────────────────────────
-
-/** 必須 DOM 要素を取得する。要素が見つからない場合は Error をスローする */
-function getEl<T extends HTMLElement>(selector: string): T {
-  const el = document.querySelector<T>(selector)
-  if (!el) {
-    throw new Error(`[settings] Required element not found: ${selector}`)
-  }
-  return el
 }
 
 // ─── SettingsBridge 実装 ──────────────────────────────────────────────────────
