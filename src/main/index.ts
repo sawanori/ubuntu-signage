@@ -879,58 +879,24 @@ async function main(): Promise<void> {
   const isDev = process.env['NODE_ENV'] === 'development'
   const devBaseUrl = process.env['ELECTRON_RENDERER_URL'] ?? ''
 
-  async function loadOverlay(): Promise<void> {
+  /**
+   * 指定した WebContentsView に renderer をロードする共通ヘルパー。
+   * electron-vite dev はエントリをディレクトリ名直下で配信するため /src/renderer プレフィックス不要。
+   * 生成される URL/file path は各 named 関数と完全一致する。
+   */
+  async function loadView(view: WebContentsView, seg: string): Promise<void> {
     if (isDev && devBaseUrl !== '') {
-      // electron-vite dev はエントリをディレクトリ名直下で配信するため /src/renderer プレフィックス不要
-      await overlayView.webContents.loadURL(
-        `${devBaseUrl}/overlay/index.html`,
-      )
+      await view.webContents.loadURL(`${devBaseUrl}/${seg}/index.html`)
     } else {
-      await overlayView.webContents.loadFile(
-        join(__dirname, '../renderer/overlay/index.html'),
-      )
+      await view.webContents.loadFile(join(__dirname, `../renderer/${seg}/index.html`))
     }
   }
 
-  async function loadSettings(): Promise<void> {
-    if (isDev && devBaseUrl !== '') {
-      // electron-vite dev はエントリをディレクトリ名直下で配信するため /src/renderer プレフィックス不要
-      await settingsView.webContents.loadURL(
-        `${devBaseUrl}/settings/index.html`,
-      )
-    } else {
-      await settingsView.webContents.loadFile(
-        join(__dirname, '../renderer/settings/index.html'),
-      )
-    }
-  }
-
-  async function loadHotspot(): Promise<void> {
-    if (isDev && devBaseUrl !== '') {
-      // electron-vite dev はエントリをディレクトリ名直下で配信するため /src/renderer プレフィックス不要
-      await hotspotView.webContents.loadURL(
-        `${devBaseUrl}/hotspot/index.html`,
-      )
-    } else {
-      await hotspotView.webContents.loadFile(
-        join(__dirname, '../renderer/hotspot/index.html'),
-      )
-    }
-  }
-
+  async function loadOverlay(): Promise<void> { return loadView(overlayView, 'overlay') }
+  async function loadSettings(): Promise<void> { return loadView(settingsView, 'settings') }
+  async function loadHotspot(): Promise<void> { return loadView(hotspotView, 'hotspot') }
   /** アドレスバー renderer を addressBarView にロードする (§9 E-3) */
-  async function loadAddressBar(): Promise<void> {
-    if (isDev && devBaseUrl !== '') {
-      // electron-vite dev はエントリをディレクトリ名直下で配信するため /src/renderer プレフィックス不要
-      await addressBarView.webContents.loadURL(
-        `${devBaseUrl}/addressbar/index.html`,
-      )
-    } else {
-      await addressBarView.webContents.loadFile(
-        join(__dirname, '../renderer/addressbar/index.html'),
-      )
-    }
-  }
+  async function loadAddressBar(): Promise<void> { return loadView(addressBarView, 'addressbar') }
 
   // ── 各 View に URL をロード (Phase E §9 E-6: 起動時ロジック変更) ──────────
   // ⚠️ CRITICAL §9 E-6:
