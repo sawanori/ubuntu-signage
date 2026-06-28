@@ -63,6 +63,7 @@ import {
   MAX_RETRY_ATTEMPTS,
 } from './site-load-retry'
 import { notifyAddressZoneEnabled, computeLayeredBounds } from './toolbar-utils'
+import { makeBeforeInputQuitHandler } from './before-input-quit'
 import type { SchedulerLogger } from './scheduler/scheduler'
 import type { PlaylistLogger } from './playlist'
 import type { WatcherLogger } from './watcher'
@@ -829,6 +830,10 @@ async function main(): Promise<void> {
   // 同一定義されていた `setToolbarVisible(!toolbarVisible)` を一本化する。
   const toggleAddressBar = (): void => setToolbarVisible(!toolbarVisible)
 
+  // ── 終了経路（Ctrl+Q / before-input-event 共通） ─────────────────────────────
+  // globalShortcut(X11) と before-input-event(Wayland) の両方から呼ばれる統一 quit 経路。
+  const handleQuit = (): void => { app.quit() }
+
   // ── InputCoordinator (Ctrl+G / Ctrl+L / hotspot:tap) (T21/T22 + Phase E E-8) ──
   // hotspot:tap は ipc.ts で受信し InputCoordinator.recordTap() を呼ぶ。
   // 3 回カウント・トグルロジックは InputCoordinator が担う（UH-03/Wayland 対応）。
@@ -854,13 +859,24 @@ async function main(): Promise<void> {
     onToggleAddressBar: toggleAddressBar,
     // Ctrl+Q → 即終了（確認なし・描画状態に無依存）
     // 旧: quitCoordinator.requestQuit()（2段確認）→ 新: app.quit() 直呼び
-    onQuit: () => app.quit(),
+    onQuit: handleQuit,
   })
   inputCoordinator.registerShortcut()
   // E-8: Ctrl+L ショートカット登録（Wayland では自動スキップ）
   inputCoordinator.registerAddressBarShortcut()
   // Ctrl+Q ショートカット登録（Wayland では自動スキップ）→ 即 app.quit()
   inputCoordinator.registerQuitShortcut()
+
+  // W-01: Wayland 環境での Ctrl+Q 終了補完
+  // globalShortcut は Wayland では機能しない（registerQuitShortcut が早期 return）ため、
+  // フォーカスを受けうる全 View の before-input-event で Ctrl+Q を捕捉して handleQuit() を呼ぶ。
+  // X11 では globalShortcut が担当するため before-input-event は結線しない（二重発火防止）。
+  if (isWayland) {
+    const beforeInputQuitHandler = makeBeforeInputQuitHandler(handleQuit)
+    ;[siteView, addressBarView, overlayView, hotspotView, settingsView].forEach((view) => {
+      view.webContents.on('before-input-event', beforeInputQuitHandler)
+    })
+  }
 
   // 右クリック → 設定パネルを開く（Ctrl+G / 隅3タップに加わる第3経路 / ユーザー要望）
   // body は pointer-events:none で下層へ透過するため通常は siteView が右クリックを受けるが、
