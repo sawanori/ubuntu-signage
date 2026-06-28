@@ -267,28 +267,21 @@ async function main(): Promise<void> {
 
   // ── media:// プロトコルハンドラー登録 ──────────────────────────────────
   // currentVideoFolder を closure で参照することで、フォルダ変更に動的対応する。
+  // handleMedia は毎リクエストで createElectronProtocolHandler を呼ぶため、
+  // currentVideoFolder の最新値が常に参照される（live-folder closure 意味論を維持）。
   const protocolLogger = { error: logError, warn: logWarn }
-  protocol.handle('media', (request) => {
-    const handler = createElectronProtocolHandler(
-      currentVideoFolder,
-      mediaFsAdapter,
-      protocolLogger,
-    )
-    return handler(request)
-  })
+  const handleMedia = (request: Request): Promise<Response> =>
+    createElectronProtocolHandler(currentVideoFolder, mediaFsAdapter, protocolLogger)(request)
+
+  // 全 view が明示 partition を持つため既定セッション経由の media:// 消費者は現状ゼロ。
+  // 防御的に登録を残す（削除しない）。
+  protocol.handle('media', handleMedia)
 
   // overlayView は partition "persist:overlay" で動作するため、media:// ハンドラは既定セッションだけでなく
   // overlay セッションにも登録する。既定セッションのみだと overlay からの media:// が未処理になり
   // <video> が "Format error" になる（実機診断で確認済み）。
   const overlayProtoSession = session.fromPartition('persist:overlay')
-  overlayProtoSession.protocol.handle('media', (request) => {
-    const handler = createElectronProtocolHandler(
-      currentVideoFolder,
-      mediaFsAdapter,
-      protocolLogger,
-    )
-    return handler(request)
-  })
+  overlayProtoSession.protocol.handle('media', handleMedia)
 
   // ── siteView セッション: X-Frame-Options / CSP frame-ancestors 除去 ────
   // **siteView 専用 partition (persist:site) に限定。他 3 View は改変しない。**
