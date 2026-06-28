@@ -19,12 +19,12 @@
  *   - SchedulerState は 'IDLE' | 'FADE_IN' | 'PLAYING' | 'FADE_OUT' の文字列リテラル
  */
 
-import type { Config } from '../../shared/types'
+import type { Config, SchedulerState } from '../../shared/types'
 
 // ─── 型定義 ─────────────────────────────────────────────────────────────────
 
-/** スケジューラの状態 */
-export type SchedulerState = 'IDLE' | 'FADE_IN' | 'PLAYING' | 'FADE_OUT'
+// SchedulerState は src/shared/types.ts から import（再宣言を排除・C4）。
+export type { SchedulerState }
 
 /** URL検証結果 */
 export type UrlValidationResult =
