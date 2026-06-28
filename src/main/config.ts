@@ -244,12 +244,6 @@ export class ConfigManager {
 
   /**
    * 設定をストアへ保存する。
-   * electron-store のアトミック書き込みに委譲する（自前 temp→rename は行わない）。
-   *
-   * 書き込みに失敗した場合は ERROR ログを出力し、メモリ上の値はそのまま維持する。
-   */
-  /**
-   * 設定をストアへ保存する。
    * @returns 保存成功時は true、失敗時は false（ERROR ログを出力）
    */
   save(config: Config): boolean {
