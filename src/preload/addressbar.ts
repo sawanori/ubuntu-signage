@@ -19,6 +19,7 @@
 
 import { contextBridge, ipcRenderer } from 'electron'
 import type { Config } from '../shared/types'
+import type { AddressBarApi, NavigateResult } from '../shared/window-api'
 
 // ─── モジュールレベルリスナー（一度だけ登録）────────────────────────────────
 
@@ -30,18 +31,9 @@ ipcRenderer.on('addressbar:config-updated', (_event, config: Config) => {
   _configUpdatedCallback?.(config)
 })
 
-// ─── 戻り値型 ────────────────────────────────────────────────────────────────
-
-/** addressbar:navigate invoke の戻り値型 */
-export interface NavigateResult {
-  ok: boolean
-  config?: Config
-  message?: string
-}
-
 // ─── contextBridge API ────────────────────────────────────────────────────────
 
-contextBridge.exposeInMainWorld('addressBarApi', {
+const addressBarApi: AddressBarApi = {
   /**
    * 現在設定を取得する。
    * Main: addressbar:get-config ハンドラが ConfigManager.current を返す。
@@ -80,4 +72,6 @@ contextBridge.exposeInMainWorld('addressBarApi', {
   onConfigUpdated: (callback: (config: Config) => void): void => {
     _configUpdatedCallback = callback
   },
-})
+}
+
+contextBridge.exposeInMainWorld('addressBarApi', addressBarApi)

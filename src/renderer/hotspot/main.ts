@@ -25,20 +25,12 @@
  *   - .corner: pointer-events:auto（透明・40×40px・四隅固定配置）
  */
 
-// ESM モジュールとして扱い、declare global による Window 拡張を有効にする
-export {};
+import type { HotspotApi } from '../../shared/window-api'
 
-/** preload の contextBridge で公開された hotspotApi の型 */
-interface HotspotApi {
-  sendTap: () => void;
-  /** アドレスバートグルを Main へ通知する（上部中央ゾーンタップ） */
-  sendAddressBarToggle: () => void;
-  /**
-   * Main から hotspot:set-address-zone-enabled を受信したときのコールバックを登録する。
-   * enabled=false のとき .zone-top-center を pointer-events:none にしてクリックを透過させる。
-   */
-  onAddressZoneEnabled: (cb: (enabled: boolean) => void) => void;
-}
+// preload の contextBridge で公開された hotspotApi の型。
+// src/shared/window-api.ts の HotspotApi を import type で再利用する（C2）。
+// import type により既に ESM モジュール扱いになるため export {} は残置するが冗長。
+export {};
 
 declare global {
   interface Window {

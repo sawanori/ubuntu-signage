@@ -22,22 +22,12 @@
  */
 
 import type { Config } from '../../shared/types'
+import type { AddressBarApi } from '../../shared/window-api'
 
 // ─── 型宣言（contextBridge から公開された API）───────────────────────────────
-
-interface NavigateResult {
-  ok: boolean
-  config?: Config
-  message?: string
-}
-
-interface AddressBarApi {
-  getConfig: () => Promise<Config>
-  navigate: (url: string) => Promise<NavigateResult>
-  toggleLoop: () => Promise<Config | null>
-  reload: () => void
-  onConfigUpdated: (cb: (config: Config) => void) => void
-}
+//
+// NavigateResult / AddressBarApi は src/shared/window-api.ts に単一定義済み（C2/C3）。
+// import type で再利用し、ここでの再宣言を排除する。
 
 declare global {
   interface Window {

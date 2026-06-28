@@ -34,39 +34,13 @@ import {
   type SettingsBridge,
 } from './settings-controller'
 import type { Config } from '../../shared/types'
+import type { SettingsWindowApi } from '../../shared/window-api'
 
 // ─── window.settingsApi 型宣言 ────────────────────────────────────────────────
 //
 // preload/settings.ts が contextBridge.exposeInMainWorld('settingsApi', ...) で公開する API。
-// preload 側の TypeScript では updateConfig の戻り値を Promise<void> と宣言しているが、
-// 実行時には ipcMain.handle('settings:update') が Config | null を返すため、
-// renderer 側では実態に合わせて Promise<Config | null> として宣言する。
+// src/shared/window-api.ts の SettingsWindowApi を import type で再利用する（C2）。
 // ─────────────────────────────────────────────────────────────────────────────
-
-interface SettingsWindowApi {
-  /** 現在設定を取得する（settings:get IPC invoke） */
-  getConfig: () => Promise<Config>
-  /**
-   * 設定を部分更新する（settings:update IPC invoke）。
-   * Main 側で zod 検証・保存・Scheduler 反映が行われ、結果を返す。
-   * 検証拒否または保存失敗の場合は null。
-   */
-  updateConfig: (patch: Partial<Config>) => Promise<Config | null>
-  /** settings:open 受信コールバックを登録する */
-  onOpen: (callback: () => void) => void
-  /** settings:updated 受信コールバックを登録する */
-  onUpdated: (callback: (config: Config) => void) => void
-  /** settings:close を Main へ送信する */
-  close: () => void
-  /** settings:test-play を Main へ送信する（IDLE 時のみ Main が実行） */
-  testPlay: () => void
-  /** settings:pick-folder を invoke してフォルダ選択結果を返す */
-  pickFolder: () => Promise<{ folderPath: string | null }>
-  /** app:request-quit を Main へ送信する（終了確認フロー起動）(修正 D §B2-5) */
-  quitApp: () => void
-  /** Main から app:quit-armed が届いたときのコールバックを登録する (修正 D §B2-5) */
-  onQuitArmed: (callback: (armed: boolean) => void) => void
-}
 
 declare global {
   interface Window {

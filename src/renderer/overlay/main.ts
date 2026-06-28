@@ -16,28 +16,16 @@
  */
 
 import { type IVideoElement, OverlayController } from './overlay-controller'
+import type { OverlayApi } from '../../shared/window-api'
 
 // ─── window.overlayApi 型宣言 ─────────────────────────────────────────────────
 //
 // src/preload/overlay.ts の contextBridge.exposeInMainWorld('overlayApi', ...)
-// に対応する型。TypeScript はこれを知らないので global augmentation で宣言する。
+// に対応する型。src/shared/window-api.ts の OverlayApi を import type で再利用する。
 
 declare global {
   interface Window {
-    overlayApi: {
-      /** Main から overlay:play が届いたときのコールバック登録（UO-07: 一度のみ登録）*/
-      onPlay: (callback: (path: string) => void) => void
-      /** 再生完了を Main へ通知 */
-      sendPlayed: (path: string) => void
-      /** 再生エラーを Main へ通知 */
-      sendError: (path: string, reason: string) => void
-      /** 動画長確定を Main へ通知（ウォッチドッグタイマー更新用）*/
-      sendDurationReady: (ms: number) => void
-      /** フェードイン完了を Main へ通知 */
-      sendFadeInDone: () => void
-      /** フェードアウト完了を Main へ通知 */
-      sendFadeOutDone: () => void
-    }
+    overlayApi: OverlayApi
   }
 }
 
