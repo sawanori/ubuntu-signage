@@ -41,5 +41,9 @@ deb:
     - libcups2
     - libdrm2
 
+electronLanguages:
+  - en-US
+  - ja
+
 # arm64 prebuilt electron は electron@35.7.5 で対応済み
 # ELECTRON_MIRROR / nativeModulesOptions は必要に応じて追加
