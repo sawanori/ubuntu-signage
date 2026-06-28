@@ -37,6 +37,20 @@ if [[ ! -x "${APPIMAGE_PATH}" ]]; then
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
+# プリフライト検査: libfuse2
+# type-2 AppImage は libfuse.so.2 が必要。Pi OS Bookworm は既定で fuse3 のみ。
+# 代替: sudo apt-get install -y libfuse2
+#        または --appimage-extract-and-run 環境変数で FUSE なし実行（遅い）
+# ─────────────────────────────────────────────────────────────────────────────
+if ! ldconfig -p | grep -q 'libfuse\.so\.2'; then
+  echo "エラー: libfuse2 が未導入です。" >&2
+  echo "  sudo apt-get install -y libfuse2 を実行してから再試行してください。" >&2
+  echo "  (Pi OS Bookworm は既定で fuse3 のみ。type-2 AppImage は libfuse2 が必要です)" >&2
+  echo "  代替: APPIMAGE_EXTRACT_AND_RUN=1 bash ops/install.sh ${APPIMAGE_PATH}" >&2
+  exit 1
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
 # 変数
 # ─────────────────────────────────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

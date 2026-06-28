@@ -48,6 +48,30 @@ getconf LONG_BIT    # 64 であること
 vainfo 2>/dev/null || echo "VA-API 未対応 (ソフトデコードで動作継続)"
 ```
 
+**libfuse2 の前提インストール (Pi OS Bookworm)**
+
+Pi OS Bookworm (Debian 12) は既定で fuse3 のみ搭載しており、type-2 AppImage の実行に必要な `libfuse2` が含まれません。インストール前に以下を実行してください:
+
+```bash
+# 実機で要実行 (Pi OS Bookworm)
+sudo apt-get install -y libfuse2
+```
+
+`ops/install.sh` はプリフライト検査として `libfuse2` の有無を確認し、未導入の場合は明示エラーで停止します。
+
+**libfuse2 なしで起動する代替手順 (FUSE 不使用モード)**
+
+`libfuse2` がインストールできない環境では、環境変数 `APPIMAGE_EXTRACT_AND_RUN=1` を設定すると FUSE を使わずに AppImage を展開・実行できます (起動に数秒余分にかかります):
+
+```bash
+# install.sh の代替呼び出し
+APPIMAGE_EXTRACT_AND_RUN=1 bash ops/install.sh /home/pi/ubuntuapp-0.1.0-arm64.AppImage
+# 起動後の systemd ユニット経由での起動も同様に環境変数が必要なため、
+# ~/.config/systemd/user/signage-overlay.service に Environment=APPIMAGE_EXTRACT_AND_RUN=1 を追記すること
+```
+
+> 推奨は `sudo apt-get install -y libfuse2` です。
+
 ---
 
 ## 2. 設定方法
