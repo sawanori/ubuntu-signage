@@ -86,7 +86,7 @@ async function getToolbarVisible(handle: LaunchResult): Promise<boolean | 'UNKNO
  * addressBarView の URL 入力欄が表示・有効かを確認する。
  * addressBarPage が null の場合は 'unknown' を返す。
  */
-async function getAddressBarInputValue(handle: LaunchResult): Promise<string | 'unknown'> {
+async function _getAddressBarInputValue(handle: LaunchResult): Promise<string | 'unknown'> {
   if (!handle.views.addressBarPage) return 'unknown';
   try {
     return await handle.views.addressBarPage.evaluate(() => {
