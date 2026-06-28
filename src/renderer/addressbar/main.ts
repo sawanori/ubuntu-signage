@@ -21,9 +21,6 @@
  *   on:     addressbar:config-updated
  */
 
-// ESM モジュールとして扱い、declare global による Window 拡張を有効にする
-export {};
-
 import type { Config } from '../../shared/types'
 
 // ─── 型宣言（contextBridge から公開された API）───────────────────────────────
