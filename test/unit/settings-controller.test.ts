@@ -409,14 +409,6 @@ describe('SettingsController', () => {
       controller.validateUrl('')          // 空文字でクリア
       expect(controller.urlError).toBeNull()
     })
-
-    it('既存: https:// URL は有効', () => {
-      expect(controller.validateUrl('https://example.com').valid).toBe(true)
-    })
-
-    it('既存: ftp:// URL は無効', () => {
-      expect(controller.validateUrl('ftp://example.com').valid).toBe(false)
-    })
   })
 
   // ──────────────────────────────────────────────────────────────────────────────

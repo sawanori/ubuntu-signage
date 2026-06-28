@@ -15,6 +15,7 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron'
+import type { HotspotApi } from '../shared/window-api'
 
 // ─── モジュールレベルリスナー（一度だけ登録）────────────────────────────────
 
@@ -31,7 +32,7 @@ ipcRenderer.on(
 
 // ─── contextBridge API ────────────────────────────────────────────────────────
 
-contextBridge.exposeInMainWorld('hotspotApi', {
+const hotspotApi: HotspotApi = {
   /**
    * 隅 3 タップ検出を Main へ通知する。
    * Main の hotspot:tap ハンドラが InputCoordinator 経由で settingsView を開く。
@@ -42,7 +43,7 @@ contextBridge.exposeInMainWorld('hotspotApi', {
 
   /**
    * 上部中央ゾーンのタップを Main へ通知する（アドレスバートグル）。
-   * Main の hotspot:address-bar-toggle ハンドラが toggleAddressBarZone() を呼ぶ。
+   * Main の hotspot:address-bar-toggle ハンドラが deps.onToggleAddressBar へ委譲する。
    */
   sendAddressBarToggle: (): void => {
     ipcRenderer.send('hotspot:address-bar-toggle')
@@ -56,4 +57,6 @@ contextBridge.exposeInMainWorld('hotspotApi', {
   onAddressZoneEnabled: (callback: (enabled: boolean) => void): void => {
     _addressZoneEnabledCallback = callback
   },
-})
+}
+
+contextBridge.exposeInMainWorld('hotspotApi', hotspotApi)

@@ -6,6 +6,27 @@
  */
 import { describe, it, expect } from 'vitest'
 import { ConfigSchema, ConfigUpdateSchema } from '../../src/shared/schema'
+import type { Config } from '../../src/shared/types'
+import type { z } from 'zod'
+
+// ─── C5: Config ↔ z.infer<ConfigSchema> コンパイル時等価テスト ──────────────
+//
+// 手書き Config 型と ConfigSchema の推論型が相互代入可能であることをコンパイル時に強制する。
+// ランタイムで実行されない型のみのアサーション（型エラーのみが検出手段）。
+// どちらかにフィールドが追加・削除されると typecheck で検出できる。
+
+type _InferredConfig = z.infer<typeof ConfigSchema>
+
+// Config → z.infer の方向（手書き型が ConfigSchema を満たすこと）
+const _configToInferred: _InferredConfig = {} as Config
+// z.infer → Config の方向（ConfigSchema の推論型が手書き Config を満たすこと）
+const _inferredToConfig: Config = {} as _InferredConfig
+
+// 未使用変数として lint に検出されないよう型レベルで参照する
+void _configToInferred
+void _inferredToConfig
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 // --------- ConfigSchema ---------
 

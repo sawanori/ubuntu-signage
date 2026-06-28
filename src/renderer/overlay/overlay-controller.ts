@@ -159,6 +159,19 @@ export class OverlayController {
   // ─── プライベートメソッド ────────────────────────────────────────────────
 
   /**
+   * FADE_OUT 完了後の IDLE 遷移共通ブロック。
+   * 状態ガード → IDLE → setVisible(false) → currentPath=null → onFadeOutDone の順序を維持。
+   * _startFadeOut と _handleError（可視エラー）から呼ぶ。
+   */
+  private _completeFadeOutToIdle(): void {
+    if (this.state !== 'FADE_OUT') return
+    this.state = 'IDLE'
+    this.opts.setVisible(false)
+    this.currentPath = null
+    this.opts.onFadeOutDone()
+  }
+
+  /**
    * PLAYING → FADE_OUT: フェードアウト CSS を開始し、完了後に IDLE へ戻る。
    * 正常終了 (ended) のときに呼ぶ。
    */
@@ -169,11 +182,7 @@ export class OverlayController {
     // onFadeOutDone と同時に送っていたため scheduler の FADE_OUT ウォッチドッグが誤発火していた。
     this.opts.onPlayed(path)
     this.opts.triggerFadeOut(() => {
-      if (this.state !== 'FADE_OUT') return
-      this.state = 'IDLE'
-      this.opts.setVisible(false)
-      this.currentPath = null
-      this.opts.onFadeOutDone()
+      this._completeFadeOutToIdle()
     })
   }
 
@@ -188,18 +197,14 @@ export class OverlayController {
     const path = this.currentPath ?? ''
     const wasVisible = this.state === 'FADE_IN' || this.state === 'PLAYING'
 
-    // エラーを即座に通知
+    // エラーを即座に通知（onPlayed/onError の発火順序は現状維持）
     this.opts.onError(path, reason)
 
     if (wasVisible) {
       // 表示中の場合はフェードアウトして IDLE へ
       this.state = 'FADE_OUT'
       this.opts.triggerFadeOut(() => {
-        if (this.state !== 'FADE_OUT') return
-        this.state = 'IDLE'
-        this.opts.setVisible(false)
-        this.currentPath = null
-        this.opts.onFadeOutDone()
+        this._completeFadeOutToIdle()
       })
     } else {
       // LOADING 中 (reveal 前) は即 IDLE へ

@@ -21,26 +21,14 @@
  *   on:     addressbar:config-updated
  */
 
-// ESM モジュールとして扱い、declare global による Window 拡張を有効にする
-export {};
-
 import type { Config } from '../../shared/types'
+import type { AddressBarApi } from '../../shared/window-api'
+import { getEl } from '../shared/dom-utils'
 
 // ─── 型宣言（contextBridge から公開された API）───────────────────────────────
-
-interface NavigateResult {
-  ok: boolean
-  config?: Config
-  message?: string
-}
-
-interface AddressBarApi {
-  getConfig: () => Promise<Config>
-  navigate: (url: string) => Promise<NavigateResult>
-  toggleLoop: () => Promise<Config | null>
-  reload: () => void
-  onConfigUpdated: (cb: (config: Config) => void) => void
-}
+//
+// NavigateResult / AddressBarApi は src/shared/window-api.ts に単一定義済み（C2/C3）。
+// import type で再利用し、ここでの再宣言を排除する。
 
 declare global {
   interface Window {
@@ -49,14 +37,16 @@ declare global {
 }
 
 // ─── DOM 要素の参照 ──────────────────────────────────────────────────────────
+// getEl は要素が見つからない場合にセレクタ付きの Error をスローする（J3 承認済み）。
+// 正常系（全要素存在）は getElementById + cast と挙動完全同一。
 
-const reloadBtn = document.getElementById('reload-btn') as HTMLButtonElement
-const navigateForm = document.getElementById('navigate-form') as HTMLFormElement
-const urlInput = document.getElementById('url-input') as HTMLInputElement
-const urlError = document.getElementById('url-error') as HTMLSpanElement
-const navigateBtn = document.getElementById('navigate-btn') as HTMLButtonElement
-const loopToggle = document.getElementById('loop-toggle') as HTMLButtonElement
-const loopLabel = document.getElementById('loop-label') as HTMLSpanElement
+const reloadBtn = getEl<HTMLButtonElement>('#reload-btn')
+const navigateForm = getEl<HTMLFormElement>('#navigate-form')
+const urlInput = getEl<HTMLInputElement>('#url-input')
+const urlError = getEl<HTMLSpanElement>('#url-error')
+const navigateBtn = getEl<HTMLButtonElement>('#navigate-btn')
+const loopToggle = getEl<HTMLButtonElement>('#loop-toggle')
+const loopLabel = getEl<HTMLSpanElement>('#loop-label')
 
 // ─── UI 更新ヘルパー ─────────────────────────────────────────────────────────
 

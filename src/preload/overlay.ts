@@ -17,6 +17,7 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron'
+import type { OverlayApi } from '../shared/window-api'
 
 // ─── モジュールレベルリスナー（一度だけ登録）────────────────────────────────
 
@@ -33,7 +34,7 @@ ipcRenderer.on('overlay:play', (_event, payload: { path: string }) => {
 
 // ─── contextBridge API ────────────────────────────────────────────────────────
 
-contextBridge.exposeInMainWorld('overlayApi', {
+const overlayApi: OverlayApi = {
   /**
    * Main から overlay:play が届いたときに呼ぶコールバックを登録する。
    * 複数回呼んでも IPC リスナーは増えない（UO-07）。
@@ -69,4 +70,6 @@ contextBridge.exposeInMainWorld('overlayApi', {
   sendFadeOutDone: (): void => {
     ipcRenderer.send('overlay:fade-out-done')
   },
-})
+}
+
+contextBridge.exposeInMainWorld('overlayApi', overlayApi)

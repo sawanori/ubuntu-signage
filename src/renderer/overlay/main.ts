@@ -16,28 +16,16 @@
  */
 
 import { type IVideoElement, OverlayController } from './overlay-controller'
+import type { OverlayApi } from '../../shared/window-api'
 
 // ─── window.overlayApi 型宣言 ─────────────────────────────────────────────────
 //
 // src/preload/overlay.ts の contextBridge.exposeInMainWorld('overlayApi', ...)
-// に対応する型。TypeScript はこれを知らないので global augmentation で宣言する。
+// に対応する型。src/shared/window-api.ts の OverlayApi を import type で再利用する。
 
 declare global {
   interface Window {
-    overlayApi: {
-      /** Main から overlay:play が届いたときのコールバック登録（UO-07: 一度のみ登録）*/
-      onPlay: (callback: (path: string) => void) => void
-      /** 再生完了を Main へ通知 */
-      sendPlayed: (path: string) => void
-      /** 再生エラーを Main へ通知 */
-      sendError: (path: string, reason: string) => void
-      /** 動画長確定を Main へ通知（ウォッチドッグタイマー更新用）*/
-      sendDurationReady: (ms: number) => void
-      /** フェードイン完了を Main へ通知 */
-      sendFadeInDone: () => void
-      /** フェードアウト完了を Main へ通知 */
-      sendFadeOutDone: () => void
-    }
+    overlayApi: OverlayApi
   }
 }
 
@@ -71,7 +59,12 @@ class DomVideoElement implements IVideoElement {
   play(): void {
     // フェードイン完了後に OverlayController が呼ぶ（明示的再生開始）。
     // autoplay で既に再生中の場合は no-op に近い動作となる。
-    void this.el.play()
+    // play() の reject（NotAllowedError/AbortError 等）は <video> の 'error' イベントを
+    // 発火しないため、そのままでは無音障害になる。失敗時のみ診断ログを出す。
+    // 成功パスの観測出力は不変。onError へのルーティングは挙動変更のため行わない。
+    this.el.play().catch((e) => {
+      console.error('[overlay] video.play() rejected', e)
+    })
   }
 
   pause(): void {
@@ -184,37 +177,30 @@ function setVisible(visible: boolean): void {
 }
 
 /**
- * CSS opacity 0→1 フェードイン（≈1000ms）。
- * transitionend 受信後に onComplete を呼ぶ。
+ * CSS opacity トランジション共通ヘルパー（styles.css の transition: opacity 2000ms 参照）。
+ * `to` に指定した値（'0' または '1'）へ opacity を変化させ、
+ * transitionend（opacity プロパティ）受信後に onComplete を呼ぶ。
  *
  * 視覚確認は E2E / [M] に委ねる（UO-06）。
  */
-function triggerFadeIn(onComplete: () => void): void {
+function runOpacityTransition(to: '0' | '1', onComplete: () => void): void {
   const handleEnd = (ev: TransitionEvent): void => {
     if (ev.propertyName !== 'opacity') return
     container.removeEventListener('transitionend', handleEnd)
     onComplete()
   }
   container.addEventListener('transitionend', handleEnd)
-  // opacity を 1 にセット → CSS transition: opacity 1000ms ease-in-out が発火
-  container.style.opacity = '1'
+  container.style.opacity = to
 }
 
-/**
- * CSS opacity 1→0 フェードアウト（≈1000ms）。
- * transitionend 受信後に onComplete を呼ぶ。
- *
- * 視覚確認は E2E / [M] に委ねる（UO-06）。
- */
+/** CSS opacity 0→1 フェードイン（2000ms）。transitionend 後に onComplete を呼ぶ。*/
+function triggerFadeIn(onComplete: () => void): void {
+  runOpacityTransition('1', onComplete)
+}
+
+/** CSS opacity 1→0 フェードアウト（2000ms）。transitionend 後に onComplete を呼ぶ。*/
 function triggerFadeOut(onComplete: () => void): void {
-  const handleEnd = (ev: TransitionEvent): void => {
-    if (ev.propertyName !== 'opacity') return
-    container.removeEventListener('transitionend', handleEnd)
-    onComplete()
-  }
-  container.addEventListener('transitionend', handleEnd)
-  // opacity を 0 にセット → CSS transition: opacity 1000ms ease-in-out が発火
-  container.style.opacity = '0'
+  runOpacityTransition('0', onComplete)
 }
 
 // ─── OverlayController 生成と IPC 結線 ───────────────────────────────────────

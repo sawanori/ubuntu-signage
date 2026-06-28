@@ -6,19 +6,11 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import * as fs from 'fs'
-import * as os from 'os'
 import * as path from 'path'
 import { PlaylistManager, type PlaylistLogger } from '../../src/main/playlist'
+import { makeTempDir, touch } from './helpers/fs-fixtures'
 
 // -------- test helpers --------
-
-async function makeTempDir(): Promise<string> {
-  return fs.promises.mkdtemp(path.join(os.tmpdir(), 'playlist-test-'))
-}
-
-async function touch(dir: string, name: string): Promise<void> {
-  await fs.promises.writeFile(path.join(dir, name), Buffer.alloc(0))
-}
 
 async function removeFile(dir: string, name: string): Promise<void> {
   await fs.promises.unlink(path.join(dir, name))
@@ -34,7 +26,7 @@ describe('PlaylistManager', () => {
   let mockLogger: PlaylistLogger
 
   beforeEach(async () => {
-    tmpDir = await makeTempDir()
+    tmpDir = await makeTempDir('playlist-test-')
     warnLogs = []
     errorLogs = []
     mockLogger = {

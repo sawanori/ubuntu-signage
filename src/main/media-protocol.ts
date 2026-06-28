@@ -377,7 +377,7 @@ export async function handleMediaRequest(
   let rangeStart: number
   let rangeEnd: number
 
-  if (rangeHeader === null || rangeHeader === '') {
+  if (!hasRange) {
     // Range ヘッダーなし → 200 OK でファイル全体を返す（HTTP 正規動作）
     // 注意: Range なしで 206 を返すのは HTTP 仕様違反。Chromium の demuxer が
     // 要求していない 206 を受け取ると SRC_NOT_SUPPORTED (code 4) を返す。

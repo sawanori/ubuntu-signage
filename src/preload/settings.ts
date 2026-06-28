@@ -18,6 +18,7 @@
 
 import { contextBridge, ipcRenderer } from 'electron'
 import type { Config } from '../shared/types'
+import type { SettingsWindowApi } from '../shared/window-api'
 
 // ─── モジュールレベルリスナー（一度だけ登録）────────────────────────────────
 
@@ -45,7 +46,7 @@ ipcRenderer.on('app:quit-armed', (_event, armed: boolean) => {
 
 // ─── contextBridge API ────────────────────────────────────────────────────────
 
-contextBridge.exposeInMainWorld('settingsApi', {
+const settingsApi: SettingsWindowApi = {
   /** 現在設定を取得する（Main: settings:get ハンドラが ConfigManager.current を返す） */
   getConfig: (): Promise<Config> => ipcRenderer.invoke('settings:get'),
 
@@ -53,7 +54,7 @@ contextBridge.exposeInMainWorld('settingsApi', {
    * 設定を部分更新する。
    * Main 側で ConfigUpdateSchema (zod) 検証・ConfigManager 保存・Scheduler 反映が行われる。
    */
-  updateConfig: (patch: Partial<Config>): Promise<void> =>
+  updateConfig: (patch: Partial<Config>): Promise<Config | null> =>
     ipcRenderer.invoke('settings:update', patch),
 
   /**
@@ -105,4 +106,6 @@ contextBridge.exposeInMainWorld('settingsApi', {
   onQuitArmed: (callback: (armed: boolean) => void): void => {
     _quitArmedCallback = callback
   },
-})
+}
+
+contextBridge.exposeInMainWorld('settingsApi', settingsApi)

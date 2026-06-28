@@ -83,17 +83,16 @@ if (!gotLock) {
     procVersion = fs.readFileSync('/proc/version', 'utf8')
   } catch {
     // /proc/version が存在しない環境（macOS / Windows ネイティブ等）では無視
-    // logWarn はまだ定義されていないため後で定義する関数の参照を避ける
-    process.stdout.write(
-      JSON.stringify({ level: 'WARN', event: 'gpu.procVersionReadFailed', ts: Date.now() }) + '\n',
-    )
+    // logWarn は巻き上げ関数宣言のため、この位置から呼び出し可能
+    logWarn('gpu.procVersionReadFailed')
   }
   const gpuParams = { env: process.env as Record<string, string | undefined>, procVersion }
   if (shouldDisableGpu(gpuParams)) {
     const phase = gpuFallbackPhase(gpuParams.env)
     // phase 3 (swiftshader GL) / phase 4 (実 GPU を in-process で使う) は hw accel を切らない
     // （phase 1/2 のみ無効化）
-    if (phase !== 3 && phase !== 4) {
+    const hardwareAccelerationDisabled = phase !== 3 && phase !== 4
+    if (hardwareAccelerationDisabled) {
       app.disableHardwareAcceleration()
     }
     // GPU_FALLBACK_PHASE 環境変数で切替（デフォルト 2）。app.whenReady() より前に呼ぶ必要あり
@@ -101,16 +100,7 @@ if (!gotLock) {
     for (const sw of gpuSwitches) {
       app.commandLine.appendSwitch(sw.name, sw.value)
     }
-    process.stdout.write(
-      JSON.stringify({
-        level: 'WARN',
-        event: 'gpu.hardwareAccelerationDisabled',
-        phase,
-        hardwareAccelerationDisabled: phase !== 3 && phase !== 4,
-        gpuSwitches,
-        ts: Date.now(),
-      }) + '\n',
-    )
+    logWarn('gpu.hardwareAccelerationDisabled', { phase, hardwareAccelerationDisabled, gpuSwitches })
   }
 }
 
@@ -267,28 +257,22 @@ async function main(): Promise<void> {
 
   // ── media:// プロトコルハンドラー登録 ──────────────────────────────────
   // currentVideoFolder を closure で参照することで、フォルダ変更に動的対応する。
+  // handleMedia は毎リクエストで createElectronProtocolHandler を呼ぶため、
+  // currentVideoFolder の最新値が常に参照される（live-folder closure 意味論を維持）。
   const protocolLogger = { error: logError, warn: logWarn }
-  protocol.handle('media', (request) => {
-    const handler = createElectronProtocolHandler(
-      currentVideoFolder,
-      mediaFsAdapter,
-      protocolLogger,
-    )
-    return handler(request)
-  })
+  const handleMedia = (request: Request): Promise<Response> =>
+    createElectronProtocolHandler(currentVideoFolder, mediaFsAdapter, protocolLogger)(request)
+
+  // 全 view が明示 partition（persist:site / '' / persist:overlay / persist:hotspot /
+  // persist:settings）を持つため、既定セッション経由の media:// 消費者は現状ゼロ。
+  // セキュリティ隣接コードであり独断削除はリスクを伴うため、防御的に登録を残す（削除しない）。
+  protocol.handle('media', handleMedia)
 
   // overlayView は partition "persist:overlay" で動作するため、media:// ハンドラは既定セッションだけでなく
   // overlay セッションにも登録する。既定セッションのみだと overlay からの media:// が未処理になり
   // <video> が "Format error" になる（実機診断で確認済み）。
   const overlayProtoSession = session.fromPartition('persist:overlay')
-  overlayProtoSession.protocol.handle('media', (request) => {
-    const handler = createElectronProtocolHandler(
-      currentVideoFolder,
-      mediaFsAdapter,
-      protocolLogger,
-    )
-    return handler(request)
-  })
+  overlayProtoSession.protocol.handle('media', handleMedia)
 
   // ── siteView セッション: X-Frame-Options / CSP frame-ancestors 除去 ────
   // **siteView 専用 partition (persist:site) に限定。他 3 View は改変しない。**
@@ -650,25 +634,41 @@ async function main(): Promise<void> {
   )
 
   // ── renderer プロセスクラッシュ復旧 (§8 / M-04 + Phase E E-9) ────────────
-  overlayView.webContents.on('render-process-gone', (_event, details) => {
-    logError('renderer.crashed', { view: 'overlay', reason: details.reason })
-    void loadOverlay()
-  })
-  settingsView.webContents.on('render-process-gone', (_event, details) => {
-    logError('renderer.crashed', { view: 'settings', reason: details.reason })
-    void loadSettings()
-  })
-  hotspotView.webContents.on('render-process-gone', (_event, details) => {
-    logError('renderer.crashed', { view: 'hotspot', reason: details.reason })
-    // E-9 §8: hotspot 再ロード後に zone 状態を復元する（クラッシュで zone-disable が失われた場合）
-    loadHotspot().then(() => {
-      // toolbarVisible の現状態を hotspot に再適用してゾーン状態を復元する
-      notifyAddressZoneEnabled(hotspotView.webContents, toolbarVisible)
-    }).catch((e: unknown) => {
-      logError('renderer.hotspotReloadFailed', {
-        reason: e instanceof Error ? e.message : String(e),
-      })
+
+  /**
+   * render-process-gone ハンドラを view に結線する共通ヘルパー。
+   * ログイベント renderer.crashed / ペイロード {view,reason} は全 view で同一。
+   * afterReload が指定された場合: reload().then(afterReload).catch(renderer.${name}ReloadFailed)
+   * afterReload が省略された場合: void reload()（overlay/settings 相当）
+   */
+  function attachCrashRecovery(
+    view: WebContentsView,
+    name: string,
+    reload: () => Promise<void>,
+    afterReload?: () => void,
+  ): void {
+    view.webContents.on('render-process-gone', (_event, details) => {
+      logError('renderer.crashed', { view: name, reason: details.reason })
+      if (afterReload !== undefined) {
+        reload().then(() => {
+          afterReload()
+        }).catch((e: unknown) => {
+          logError(`renderer.${name}ReloadFailed`, {
+            reason: e instanceof Error ? e.message : String(e),
+          })
+        })
+      } else {
+        void reload()
+      }
     })
+  }
+
+  attachCrashRecovery(overlayView, 'overlay', loadOverlay)
+  attachCrashRecovery(settingsView, 'settings', loadSettings)
+  // E-9 §8: hotspot 再ロード後に zone 状態を復元する（クラッシュで zone-disable が失われた場合）
+  attachCrashRecovery(hotspotView, 'hotspot', loadHotspot, () => {
+    // toolbarVisible の現状態を hotspot に再適用してゾーン状態を復元する
+    notifyAddressZoneEnabled(hotspotView.webContents, toolbarVisible)
   })
   // hotspot ロード完了時に zone-disable 状態を再適用する
   // （初回ロードのタイミング競合 / dev HMR でのリロードで zone-disable が失われるのを防ぐ）
@@ -676,17 +676,10 @@ async function main(): Promise<void> {
     notifyAddressZoneEnabled(hotspotView.webContents, toolbarVisible)
   })
   // E-9: addressBarView クラッシュ復旧
-  addressBarView.webContents.on('render-process-gone', (_event, details) => {
-    logError('renderer.crashed', { view: 'addressBar', reason: details.reason })
-    // 再ロード後に toolbarVisible を setToolbarVisible で再適用して
-    // bounds / visibility / zone-disable 状態を完全に復元する
-    loadAddressBar().then(() => {
-      setToolbarVisible(toolbarVisible)
-    }).catch((e: unknown) => {
-      logError('renderer.addressBarReloadFailed', {
-        reason: e instanceof Error ? e.message : String(e),
-      })
-    })
+  // 再ロード後に toolbarVisible を setToolbarVisible で再適用して
+  // bounds / visibility / zone-disable 状態を完全に復元する
+  attachCrashRecovery(addressBarView, 'addressBar', loadAddressBar, () => {
+    setToolbarVisible(toolbarVisible)
   })
 
   // ── 設定パネル 開閉 ────────────────────────────────────────────────────
@@ -767,6 +760,17 @@ async function main(): Promise<void> {
     logger: schedulerLogger,
   })
 
+  // ── siteView 再ロード共通ヘルパー ──────────────────────────────────────────
+  // onSiteUrlChange / onAddressBarNavigate / onAddressBarReload が複写していた
+  // `siteRetryState=createRetryState(); loadSiteUrl(url)` を一本化する。
+  const reloadSite = (url: string): void => {
+    siteRetryState = createRetryState()
+    loadSiteUrl(url)
+  }
+  // onToggleAddressBar が InputCoordinator と registerHandlers の両箇所で
+  // 同一定義されていた `setToolbarVisible(!toolbarVisible)` を一本化する。
+  const toggleAddressBar = (): void => setToolbarVisible(!toolbarVisible)
+
   // ── InputCoordinator (Ctrl+G / Ctrl+L / hotspot:tap) (T21/T22 + Phase E E-8) ──
   // hotspot:tap は ipc.ts で受信し InputCoordinator.recordTap() を呼ぶ。
   // 3 回カウント・トグルロジックは InputCoordinator が担う（UH-03/Wayland 対応）。
@@ -789,9 +793,7 @@ async function main(): Promise<void> {
     },
     isWayland,
     // E-8: Ctrl+L / 上部中央ゾーンタップ → アドレスバートグル
-    onToggleAddressBar: () => {
-      setToolbarVisible(!toolbarVisible)
-    },
+    onToggleAddressBar: toggleAddressBar,
     // Ctrl+Q → 即終了（確認なし・描画状態に無依存）
     // 旧: quitCoordinator.requestQuit()（2段確認）→ 新: app.quit() 直呼び
     onQuit: () => app.quit(),
@@ -834,10 +836,7 @@ async function main(): Promise<void> {
     },
     // T32-UI: siteUrl 変更時の siteView 再ロード（settings:update 経路）
     // 新しい URL へ切り替えるためリトライ状態をリセットしてから読み込む
-    onSiteUrlChange: (url: string): void => {
-      siteRetryState = createRetryState()
-      loadSiteUrl(url)
-    },
+    onSiteUrlChange: reloadSite,
     // settings:close IPC 受信時にパネルを閉じる（sender 検証は ipc.ts 側で実施済み）
     onCloseSettings: closeSettings,
     // hotspot:tap IPC（隅タップ 1 回）を InputCoordinator に渡してカウント・トグルを担わせる
@@ -845,19 +844,11 @@ async function main(): Promise<void> {
     // E-7: addressbar View の WebContents（config 変更の broadcast 先）
     addressBarWebContents: addressBarView.webContents as WebContentsLike,
     // E-7: addressbar:navigate 受信後の siteView 再ロード
-    onAddressBarNavigate: (url: string): void => {
-      siteRetryState = createRetryState()
-      loadSiteUrl(url)
-    },
+    onAddressBarNavigate: reloadSite,
     // E-7 / E-8: アドレスバートグル（Ctrl+L / 上部中央ゾーンタップ → hotspot:address-bar-toggle）
-    onToggleAddressBar: () => {
-      setToolbarVisible(!toolbarVisible)
-    },
+    onToggleAddressBar: toggleAddressBar,
     // E-7: addressbar:reload 受信後の siteView 再ロード
-    onAddressBarReload: () => {
-      siteRetryState = createRetryState()
-      loadSiteUrl(configManager.current.siteUrl)
-    },
+    onAddressBarReload: () => reloadSite(configManager.current.siteUrl),
     // 修正 B §B2: app:request-quit 受信 → QuitCoordinator.requestQuit()
     onRequestQuit: () => quitCoordinator.requestQuit(),
     // 修正 B §B2: settings renderer の WebContents id（C2 二層 sender 検証）
@@ -879,58 +870,24 @@ async function main(): Promise<void> {
   const isDev = process.env['NODE_ENV'] === 'development'
   const devBaseUrl = process.env['ELECTRON_RENDERER_URL'] ?? ''
 
-  async function loadOverlay(): Promise<void> {
+  /**
+   * 指定した WebContentsView に renderer をロードする共通ヘルパー。
+   * electron-vite dev はエントリをディレクトリ名直下で配信するため /src/renderer プレフィックス不要。
+   * 生成される URL/file path は各 named 関数と完全一致する。
+   */
+  async function loadView(view: WebContentsView, seg: string): Promise<void> {
     if (isDev && devBaseUrl !== '') {
-      // electron-vite dev はエントリをディレクトリ名直下で配信するため /src/renderer プレフィックス不要
-      await overlayView.webContents.loadURL(
-        `${devBaseUrl}/overlay/index.html`,
-      )
+      await view.webContents.loadURL(`${devBaseUrl}/${seg}/index.html`)
     } else {
-      await overlayView.webContents.loadFile(
-        join(__dirname, '../renderer/overlay/index.html'),
-      )
+      await view.webContents.loadFile(join(__dirname, `../renderer/${seg}/index.html`))
     }
   }
 
-  async function loadSettings(): Promise<void> {
-    if (isDev && devBaseUrl !== '') {
-      // electron-vite dev はエントリをディレクトリ名直下で配信するため /src/renderer プレフィックス不要
-      await settingsView.webContents.loadURL(
-        `${devBaseUrl}/settings/index.html`,
-      )
-    } else {
-      await settingsView.webContents.loadFile(
-        join(__dirname, '../renderer/settings/index.html'),
-      )
-    }
-  }
-
-  async function loadHotspot(): Promise<void> {
-    if (isDev && devBaseUrl !== '') {
-      // electron-vite dev はエントリをディレクトリ名直下で配信するため /src/renderer プレフィックス不要
-      await hotspotView.webContents.loadURL(
-        `${devBaseUrl}/hotspot/index.html`,
-      )
-    } else {
-      await hotspotView.webContents.loadFile(
-        join(__dirname, '../renderer/hotspot/index.html'),
-      )
-    }
-  }
-
+  async function loadOverlay(): Promise<void> { return loadView(overlayView, 'overlay') }
+  async function loadSettings(): Promise<void> { return loadView(settingsView, 'settings') }
+  async function loadHotspot(): Promise<void> { return loadView(hotspotView, 'hotspot') }
   /** アドレスバー renderer を addressBarView にロードする (§9 E-3) */
-  async function loadAddressBar(): Promise<void> {
-    if (isDev && devBaseUrl !== '') {
-      // electron-vite dev はエントリをディレクトリ名直下で配信するため /src/renderer プレフィックス不要
-      await addressBarView.webContents.loadURL(
-        `${devBaseUrl}/addressbar/index.html`,
-      )
-    } else {
-      await addressBarView.webContents.loadFile(
-        join(__dirname, '../renderer/addressbar/index.html'),
-      )
-    }
-  }
+  async function loadAddressBar(): Promise<void> { return loadView(addressBarView, 'addressbar') }
 
   // ── 各 View に URL をロード (Phase E §9 E-6: 起動時ロジック変更) ──────────
   // ⚠️ CRITICAL §9 E-6:

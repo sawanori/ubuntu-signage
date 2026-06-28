@@ -34,55 +34,19 @@ import {
   type SettingsBridge,
 } from './settings-controller'
 import type { Config } from '../../shared/types'
+import type { SettingsWindowApi } from '../../shared/window-api'
+import { getEl } from '../shared/dom-utils'
 
 // ─── window.settingsApi 型宣言 ────────────────────────────────────────────────
 //
 // preload/settings.ts が contextBridge.exposeInMainWorld('settingsApi', ...) で公開する API。
-// preload 側の TypeScript では updateConfig の戻り値を Promise<void> と宣言しているが、
-// 実行時には ipcMain.handle('settings:update') が Config | null を返すため、
-// renderer 側では実態に合わせて Promise<Config | null> として宣言する。
+// src/shared/window-api.ts の SettingsWindowApi を import type で再利用する（C2）。
 // ─────────────────────────────────────────────────────────────────────────────
-
-interface SettingsWindowApi {
-  /** 現在設定を取得する（settings:get IPC invoke） */
-  getConfig: () => Promise<Config>
-  /**
-   * 設定を部分更新する（settings:update IPC invoke）。
-   * Main 側で zod 検証・保存・Scheduler 反映が行われ、結果を返す。
-   * 検証拒否または保存失敗の場合は null。
-   */
-  updateConfig: (patch: Partial<Config>) => Promise<Config | null>
-  /** settings:open 受信コールバックを登録する */
-  onOpen: (callback: () => void) => void
-  /** settings:updated 受信コールバックを登録する */
-  onUpdated: (callback: (config: Config) => void) => void
-  /** settings:close を Main へ送信する */
-  close: () => void
-  /** settings:test-play を Main へ送信する（IDLE 時のみ Main が実行） */
-  testPlay: () => void
-  /** settings:pick-folder を invoke してフォルダ選択結果を返す */
-  pickFolder: () => Promise<{ folderPath: string | null }>
-  /** app:request-quit を Main へ送信する（終了確認フロー起動）(修正 D §B2-5) */
-  quitApp: () => void
-  /** Main から app:quit-armed が届いたときのコールバックを登録する (修正 D §B2-5) */
-  onQuitArmed: (callback: (armed: boolean) => void) => void
-}
 
 declare global {
   interface Window {
     settingsApi: SettingsWindowApi
   }
-}
-
-// ─── DOM 取得ヘルパー ─────────────────────────────────────────────────────────
-
-/** 必須 DOM 要素を取得する。要素が見つからない場合は Error をスローする */
-function getEl<T extends HTMLElement>(selector: string): T {
-  const el = document.querySelector<T>(selector)
-  if (!el) {
-    throw new Error(`[settings] Required element not found: ${selector}`)
-  }
-  return el
 }
 
 // ─── SettingsBridge 実装 ──────────────────────────────────────────────────────
@@ -127,6 +91,16 @@ function isValidInterval(n: number): n is 1 | 5 | 10 | 15 | 30 {
   return n === 1 || n === 5 || n === 10 || n === 15 || n === 30
 }
 
+/**
+ * ボタンの data-minutes 属性を数値として読み取る共通ヘルパー。
+ * Number() に統一（renderConfig の Number(attr) と click handler の parseInt(attr,10) を一本化）。
+ * 実属性値 '1'/'5'/'10'/'15'/'30' では両者の結果は完全一致。
+ */
+function readDataMinutes(btn: HTMLButtonElement): number {
+  const attr = btn.getAttribute('data-minutes')
+  return attr !== null ? Number(attr) : -1
+}
+
 // ─── UI 更新関数 ──────────────────────────────────────────────────────────────
 
 /**
@@ -141,9 +115,7 @@ function renderConfig(config: Config): void {
 
   // 再生間隔ボタン — 選択中のボタンに interval-btn--selected を付与
   for (const btn of intervalBtns) {
-    const minutesAttr = btn.getAttribute('data-minutes')
-    const minutes = minutesAttr !== null ? Number(minutesAttr) : -1
-    btn.classList.toggle('interval-btn--selected', minutes === config.intervalMinutes)
+    btn.classList.toggle('interval-btn--selected', readDataMinutes(btn) === config.intervalMinutes)
   }
 
   // サイト URL（フォーカス中は上書きしない）
@@ -157,9 +129,10 @@ function renderConfig(config: Config): void {
     : '（未設定）'
 
   // 「今すぐテスト再生」ボタン: IDLE 時のみ有効
-  // ※ schedulerState は preload 経由では受信できないため
-  //   SettingsController のデフォルト状態（IDLE）を参照する。
-  //   実際の IDLE ガードは Main 側 ipcController（T23）が担保する。
+  // ※ schedulerState は renderer では更新されず（IPC チャンネル未配線）、
+  //   SettingsController._schedulerState は常に初期値 'IDLE' のまま。
+  //   この disabled 設定は cosmetic / 非機能であり実ガードではない。
+  //   実際の IDLE ガードは Main 側 ipcController が担保する。
   testPlayBtn.disabled = controller.schedulerState !== 'IDLE'
 }
 
@@ -208,9 +181,7 @@ loopToggle.addEventListener('click', () => {
 for (const btn of intervalBtns) {
   btn.addEventListener('click', () => {
     void (async () => {
-      const minutesAttr = btn.getAttribute('data-minutes')
-      if (!minutesAttr) return
-      const minutesNum = parseInt(minutesAttr, 10)
+      const minutesNum = readDataMinutes(btn)
       if (!isValidInterval(minutesNum)) return
       const updated = await controller.selectInterval(minutesNum)
       if (updated !== null) renderConfig(updated)

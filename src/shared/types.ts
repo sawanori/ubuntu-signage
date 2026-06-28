@@ -1,5 +1,4 @@
-// shared/types.ts — stub
-// 全実装は T10 で行う（zod スキーマと合わせて定義）
+// shared/types.ts — アプリ共通ドメイン型・IPC ペイロード型
 
 /** アプリ設定 */
 export type Config = {
@@ -15,20 +14,6 @@ export type Config = {
   fadeDurationMs: number
 }
 
-/** プレイリスト状態 */
-export type PlaylistState = {
-  /** ソート済みファイル名リスト（絶対パス） */
-  files: readonly string[]
-  /** 最後に再生したファイル名（basename）。null = 未再生 */
-  lastPlayedFileName: string | null
-}
-
 /** スケジューラ状態 */
 export type SchedulerState = 'IDLE' | 'FADE_IN' | 'PLAYING' | 'FADE_OUT'
 
-// IPC payload 型 — T10 で拡充
-export type OverlayPlayPayload = { path: string }
-export type OverlayPlayedPayload = { path: string }
-export type OverlayErrorPayload = { path: string; reason: string }
-export type OverlayDurationReadyPayload = { ms: number }
-export type SettingsFolderPickedPayload = { folderPath: string | null }

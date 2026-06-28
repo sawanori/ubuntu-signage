@@ -15,23 +15,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'fs'
 import * as path from 'path'
-import * as os from 'os'
 import { Watcher, type WatcherOptions, type WatcherLogger } from '../../src/main/watcher'
 import { PlaylistManager } from '../../src/main/playlist'
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-async function makeTempDir(): Promise<string> {
-  return fs.promises.mkdtemp(path.join(os.tmpdir(), 'watcher-test-'))
-}
-
-async function touch(dir: string, name: string, content?: Buffer): Promise<string> {
-  const filePath = path.join(dir, name)
-  await fs.promises.writeFile(filePath, content ?? Buffer.alloc(0))
-  return filePath
-}
+import { makeTempDir, touch } from './helpers/fs-fixtures'
 
 /**
  * ポーリングでconditionがtrueになるまで待機する。
@@ -104,7 +90,7 @@ describe('Watcher (UW-01 ~ UW-07)', () => {
   let logger: WatcherLogger
 
   beforeEach(async () => {
-    tmpDir = await makeTempDir()
+    tmpDir = await makeTempDir('watcher-test-')
     const mock = makeMockLogger()
     warns = mock.warns
     errors = mock.errors
@@ -213,7 +199,7 @@ describe('Watcher (UW-01 ~ UW-07)', () => {
       return
     }
 
-    const noPermDir = await makeTempDir()
+    const noPermDir = await makeTempDir('watcher-test-')
     await fs.promises.chmod(noPermDir, 0o000)
 
     const { errors: errs, logger: log } = makeMockLogger()

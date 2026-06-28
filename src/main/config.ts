@@ -35,6 +35,7 @@ export const DEFAULT_CONFIG: Config = {
   videoFolderPath: '',
   intervalMinutes: 5,
   loopEnabled: true,
+  /** 現状未配線（CSS は 2000ms 固定、styles.css 参照）。本フィールドはランタイム未読込 */
   fadeDurationMs: 1000,
 } as const satisfies Config
 
@@ -241,12 +242,6 @@ export class ConfigManager {
     return { ...this._current }
   }
 
-  /**
-   * 設定をストアへ保存する。
-   * electron-store のアトミック書き込みに委譲する（自前 temp→rename は行わない）。
-   *
-   * 書き込みに失敗した場合は ERROR ログを出力し、メモリ上の値はそのまま維持する。
-   */
   /**
    * 設定をストアへ保存する。
    * @returns 保存成功時は true、失敗時は false（ERROR ログを出力）

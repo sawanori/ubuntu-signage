@@ -34,12 +34,16 @@ import * as fs from 'fs';
 /** Electron アプリのエントリポイント（npm run build で生成）*/
 export const APP_ENTRY = path.resolve(__dirname, '../../../out/main/index.js');
 
-/** 各 View を URL キーワードで識別するマップ */
-const VIEW_URL_KEYWORDS = {
-  overlay: ['overlay', 'renderer/overlay'],
-  settings: ['settings', 'renderer/settings'],
-  hotspot: ['hotspot', 'renderer/hotspot'],
-  addressbar: ['addressbar', 'renderer/addressbar'],
+/**
+ * 各 View の renderer HTML ファイルパス末尾。
+ * dev（http://localhost:PORT/overlay/index.html）と
+ * prod（file:///…/renderer/overlay/index.html）の両方で endsWith() が一致する。
+ */
+const VIEW_RENDERER_PATHS = {
+  overlay: '/overlay/index.html',
+  settings: '/settings/index.html',
+  hotspot: '/hotspot/index.html',
+  addressbar: '/addressbar/index.html',
 } as const;
 
 // --------------------------------------------------------------------------
@@ -187,8 +191,15 @@ export async function teardownApp(handle: LaunchResult): Promise<void> {
 // --------------------------------------------------------------------------
 
 /**
- * URL キーワードで各 View を識別する。
- * 完全一致ではなく includes() で柔軟にマッチングする。
+ * レンダラーパスの末尾一致で各 View を識別する。
+ *
+ * VIEW_RENDERER_PATHS の値（例: '/overlay/index.html'）で endsWith() 判定するため、
+ * 外部サイト URL が 'settings'/'overlay' 等を含んでいても siteView と誤分類しない。
+ *
+ * siteView 判定: 「既知 renderer path のいずれにも一致しない http(s) URL」
+ * （about:blank / about:srcdoc / file: URL は siteView に含めない）
+ *
+ * 正常時は従来と同じ 4 renderer view + site の判定結果を返す。
  */
 function identifyViews(pages: Page[]): ViewPages {
   const result: ViewPages = {
@@ -202,16 +213,16 @@ function identifyViews(pages: Page[]): ViewPages {
   for (const page of pages) {
     const url = page.url();
 
-    if (VIEW_URL_KEYWORDS.overlay.some((kw) => url.includes(kw))) {
+    if (url.endsWith(VIEW_RENDERER_PATHS.overlay)) {
       result.overlayPage = page;
-    } else if (VIEW_URL_KEYWORDS.settings.some((kw) => url.includes(kw))) {
+    } else if (url.endsWith(VIEW_RENDERER_PATHS.settings)) {
       result.settingsPage = page;
-    } else if (VIEW_URL_KEYWORDS.hotspot.some((kw) => url.includes(kw))) {
+    } else if (url.endsWith(VIEW_RENDERER_PATHS.hotspot)) {
       result.hotspotPage = page;
-    } else if (VIEW_URL_KEYWORDS.addressbar.some((kw) => url.includes(kw))) {
+    } else if (url.endsWith(VIEW_RENDERER_PATHS.addressbar)) {
       result.addressBarPage = page;
-    } else if (!url.startsWith('about:')) {
-      // about:blank / about:srcdoc 以外の URL を持つものを siteView と推定
+    } else if (url.startsWith('http://') || url.startsWith('https://')) {
+      // 既知のレンダラーパスに一致しない http(s) URL を siteView と判定
       result.sitePage = page;
     }
   }
@@ -219,6 +230,14 @@ function identifyViews(pages: Page[]): ViewPages {
   return result;
 }
 
-function delay(ms: number): Promise<void> {
+/** WebContentsView のページ取得不可時の共通 skip 理由（各 spec でそのまま使用） */
+export const SKIP_REASON_NO_WCV =
+  'WebContentsView のページ取得不可 (§9.4)。' +
+  'WebdriverIO + wdio-electron-service への移行を検討してください (test/e2e/README.md 参照)。';
+
+/**
+ * 指定ミリ秒待機するユーティリティ（各 spec / テストで共通利用）。
+ */
+export function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
