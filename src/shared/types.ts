@@ -25,9 +25,3 @@ export type PlaylistState = {
 /** スケジューラ状態 */
 export type SchedulerState = 'IDLE' | 'FADE_IN' | 'PLAYING' | 'FADE_OUT'
 
-// IPC payload 型
-export type OverlayPlayPayload = { path: string }
-export type OverlayPlayedPayload = { path: string }
-export type OverlayErrorPayload = { path: string; reason: string }
-export type OverlayDurationReadyPayload = { ms: number }
-export type SettingsFolderPickedPayload = { folderPath: string | null }
