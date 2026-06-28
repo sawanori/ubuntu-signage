@@ -540,13 +540,14 @@ describe('IPC 信頼境界 (T18/T20 §3.5)', () => {
 
     /**
      * sender.id を含む拡張イベントファクトリ（C2 反映: id 同一性検証用）。
-     * IpcEvent.sender は optional フィールドとして追加される予定。
+     * IpcEvent.sender は ipc.ts で既に `sender?: { id: number }` として定義済み。
+     * オブジェクトは IpcEvent に構造的に適合するため型キャスト不要。
      */
     const makeQuitEvent = (url: string, senderId?: number): IpcEvent =>
       ({
         senderFrame: { url },
         sender: senderId !== undefined ? { id: senderId } : undefined,
-      }) as IpcEvent
+      })
 
     /** 正当な settingsView sender イベント（URL 正・id 一致） */
     const makeValidQuitEvent = () => makeQuitEvent(SETTINGS_URL, SETTINGS_WEBCONTENTS_ID)
